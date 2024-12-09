@@ -1,0 +1,10 @@
+- [ ] Comprobar si es necesario resetear EKF_ctx_wk en ekfUpdate
+- [ ] Test de funciones privadas?
+- [ ] Refactorizar gls_matrix <-> gsl_matrix_float (y vector)
+- [ ] Propagación y gestión de errores
+- [ ] Implementar gsl LU_decomp_float
+- [ ] Separar gsl_quat_float y rotaciones
+  - [ ] Hacer gsl_quat_float fork de gsl 
+  - [ ] Hacer módulo de rotaciones integrando quats y rotMat
+- [ ] Crear repositorio
+  - [ ] Dependencias?
