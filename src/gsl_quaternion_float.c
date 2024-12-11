@@ -67,7 +67,7 @@ int gsl_quat_float_get_imaginary(gsl_quat_float *pQ, gsl_vector_float *pV) {
   return 0;
 }
 
-void gsl_quat_float_normamilize(gsl_quat_float *q) {
+void gsl_quat_float_normalize(gsl_quat_float *q) {
   float norm = gsl_quat_float_norm(q);
 
   gsl_vector_float_scale(q, 1 / norm);
@@ -133,7 +133,7 @@ int gsl_quat_float_fromAxis(gsl_vector_float *pAxis, const float angleRad,
   pQ->data[2] = pAxis->data[1] * sinHalfAngle;
   pQ->data[3] = pAxis->data[2] * sinHalfAngle;
 
-  gsl_quat_float_normamilize(pQ);
+  gsl_quat_float_normalize(pQ);
   return 0;
 }
 
@@ -192,7 +192,6 @@ int gsl_quat_float_toRotMatrix(gsl_quat_float *pQuat,
   }
 
   float q_w, q_x, q_y, q_z;
-  gsl_quat_float_normamilize(pQuat);
   q_w = gsl_quat_float_get(pQuat, 0);
   q_x = gsl_quat_float_get(pQuat, 1);
   q_y = gsl_quat_float_get(pQuat, 2);
