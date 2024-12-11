@@ -104,6 +104,7 @@ void get_h(EKF_ctx_t *ctx);
 int getH(EKF_ctx_t *ctx);
 int getR(EKF_ctx_t *ctx);
 int getS(EKF_ctx_t *ctx);
+void invertMatrixFloat(EKF_ctx_t *ctx, const gsl_matrix_float *S, gsl_matrix_float *invS);
 int getK(EKF_ctx_t *ctx);
 void ekfNorm(EKF_ctx_t *ctx);
 void ekfInitConditions(EKF_ctx_t *ctx, const measures_t *measures);
