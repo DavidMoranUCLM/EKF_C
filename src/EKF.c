@@ -40,6 +40,9 @@ int getR(EKF_ctx_t *ctx);
 int getS(EKF_ctx_t *ctx);
 int getK(EKF_ctx_t *ctx);
 
+void invertMatrixFloat(EKF_ctx_t *ctx, const gsl_matrix_float *S,
+                       gsl_matrix_float *invS);
+
 void ekfNorm(EKF_ctx_t *ctx);
 void ekfInitConditions(EKF_ctx_t *ctx, const measures_t *measures);
 void qInitEstimate(EKF_ctx_t *ctx, const measures_t *measures);
@@ -226,7 +229,7 @@ void PEst(EKF_ctx_t *ctx) {
 
   gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, ctx->P_prev, F, 0, M2_4_4);
   gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, F, M2_4_4, 0, ctx->P_est);
-  
+
   gsl_matrix_float_add(ctx->P_est, Q);
 }
 
@@ -297,11 +300,12 @@ void ekfCorrect(EKF_ctx_t *ctx) {
   gsl_blas_sgemv(CblasNoTrans, 1, K, v, 0, ctx->q_current);
   gsl_vector_float_add(ctx->q_current, ctx->q_est);
 
-  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, -1, K, ctx->wk->H, 0, ctx->P_prev);
+  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, -1, K, ctx->wk->H, 0,
+                 ctx->wk->M2_4_4);
 
-  gsl_matrix_float_add(ctx->P_prev, ctx->wk->I4);
+  gsl_matrix_float_add(ctx->wk->M2_4_4, ctx->wk->I4);
 
-  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->P_prev, ctx->P_est, 0,
+  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->wk->M2_4_4, ctx->P_est, 0,
                  ctx->P_current);
 }
 
@@ -326,7 +330,7 @@ void get_h(EKF_ctx_t *ctx) {
 int getH(EKF_ctx_t *ctx) {
   gsl_matrix_float *H = ctx->wk->H;
   gsl_matrix_float_set_zero(H);
-  
+
   gsl_vector_float_view u_g = gsl_matrix_float_subcolumn(H, 0, 0, 3);
   gsl_vector_float_view u_r = gsl_matrix_float_subcolumn(H, 0, 3, 3);
 
@@ -355,7 +359,7 @@ int getH(EKF_ctx_t *ctx) {
   gsl_matrix_float *pM1 = &upperRightH.matrix;
   gsl_matrix_float *pM2 = gsl_matrix_float_calloc(3, 3);
   gsl_vector_float *pV2 = gsl_vector_float_alloc(3);
-  
+
 
 
   skewSymFromVector(&u_g.vector, pM1);
@@ -397,10 +401,9 @@ int getH(EKF_ctx_t *ctx) {
 int getH(EKF_ctx_t *ctx) {
   gsl_matrix_float *H = ctx->wk->H;
   gsl_matrix_float_set_zero(H);
-  
+
   gsl_vector_float_view u_g = gsl_matrix_float_subcolumn(H, 0, 0, 3);
   gsl_vector_float_view u_r = gsl_matrix_float_subcolumn(H, 0, 3, 3);
-
 
   gsl_matrix_float_view upperRightH = gsl_matrix_float_submatrix(H, 0, 1, 3, 3);
   gsl_matrix_float_view lowerRightH = gsl_matrix_float_submatrix(H, 3, 1, 3, 3);
@@ -472,8 +475,6 @@ int getH(EKF_ctx_t *ctx) {
   return 0;
 }
 
-
-
 int getR(EKF_ctx_t *ctx) {
   gsl_matrix_float *R = ctx->wk->R;
   gsl_matrix_float_set_zero(R);
@@ -506,11 +507,24 @@ int getK(EKF_ctx_t *ctx) {
   getS(ctx);
 
   gsl_matrix_float *K = ctx->wk->K;
-
-  // K = P*H'*inv(S);
   gsl_matrix_float *S = ctx->wk->S;
+  gsl_matrix_float *invS = ctx->wk->invS;
+
+  invertMatrixFloat(ctx, S, invS);
+
+  gsl_blas_sgemm(CblasTrans, CblasNoTrans, 1, ctx->wk->H, invS, 0,
+                 ctx->wk->M1_4_6);
+  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->P_est, ctx->wk->M1_4_6, 0,
+                 K);
+
+  return 0;
+}
+
+void invertMatrixFloat(EKF_ctx_t *ctx, const gsl_matrix_float *S,
+                       gsl_matrix_float *invS) {
+  // K = P*H'*inv(S);
+
   gsl_matrix *doubleS = ctx->wk->doubleS;
-  gsl_matrix *doubleSLU = gsl_matrix_alloc(doubleS->size1, doubleS->size2);
   for (int i = 0; i < S->size1; i++) {
     for (int j = 0; j < S->size2; j++) {
       gsl_matrix_set(doubleS, i, j, gsl_matrix_float_get(S, i, j));
@@ -518,30 +532,21 @@ int getK(EKF_ctx_t *ctx) {
   }
 
   gsl_permutation *p = gsl_permutation_alloc(S->size1);
-  gsl_matrix_memcpy(doubleSLU, doubleS);
   gsl_matrix *doubleInvS = ctx->wk->doubleInvS;
   gsl_matrix_set_zero(doubleInvS);
   int signum = 0;
-  gsl_linalg_LU_decomp(doubleSLU, p, &signum);
-  gsl_linalg_LU_invert(doubleSLU, p, doubleInvS);
+  gsl_linalg_LU_decomp(doubleS, p, &signum);
+  gsl_linalg_LU_invert(doubleS, p, doubleInvS);
 
-  gsl_matrix_float *invS = ctx->wk->invS;
   for (int i = 0; i < invS->size1; i++) {
     for (int j = 0; j < invS->size2; j++) {
       gsl_matrix_float_set(invS, i, j, gsl_matrix_get(doubleInvS, i, j));
     }
   }
   gsl_permutation_free(p);
-
-  gsl_blas_sgemm(CblasTrans, CblasNoTrans, 1, ctx->wk->H, invS, 0, ctx->wk->M1_4_6);
-  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->P_est, ctx->wk->M1_4_6, 0, K);
-
-  gsl_matrix_free(doubleSLU);
-
-  return 0;
 }
 
-void ekfNorm(EKF_ctx_t *ctx) { gsl_quat_float_normamilize(ctx->q_current); }
+void ekfNorm(EKF_ctx_t *ctx) { gsl_quat_float_normalize(ctx->q_current); }
 
 void ekfInitConditions(EKF_ctx_t *ctx, const measures_t *measures) {
   qInitEstimate(ctx, measures);
