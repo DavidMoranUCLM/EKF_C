@@ -190,11 +190,15 @@ void testStep(void) {
   gsl_quat_float *pQw = gsl_quat_float_alloc();
   gsl_vector_float *pV = gsl_vector_float_calloc(3);
   gsl_vector_float_set(pV, 2, 1);
-  gsl_quat_float_fromAxis(pV, -0.1 * TIME_STEP, pQw);
+  gsl_quat_float_fromAxis(pV, -M_PI/2, pQw);
 
   rotation_t rotation;
   createRotationFromQuat(pQw, &rotation);
-  for (int i = 0; i < 100000; i++) {
+  FILE *txtMagFile = fopen("magLog.txt","w");
+  fprintf(txtMagFile,"T, mx, my, mz\n");
+  FILE *txtQuatFile = fopen("quatLog.txt","w");
+  fprintf(txtQuatFile,"T, qw, qx, qy, qz\n");
+  for (int i = 0; i < 10000; i++) {
     
 
     measure.acc[0] = gsl_vector_float_get(pAcc, 0);
@@ -210,7 +214,7 @@ void testStep(void) {
     ekfStep(&EKF_ctx, &measure, TIME_STEP*i);
 
 
-    gsl_quat_float_fromAxis(pV, -0.1 * TIME_STEP*i, pQw);
+    gsl_quat_float_fromAxis(pV, -0.1 * TIME_STEP*i - M_PI/2, pQw);
     createRotationFromQuat(pQw, &rotation);
 
     gsl_vector_float_set(pAcc, 0, 0);
@@ -224,6 +228,9 @@ void testStep(void) {
     rotateVector(pAcc, &rotation);
     rotateVector(pMag, &rotation);
 
+    fprintf(txtMagFile,"%f, %f, %f, %f\n", TIME_STEP*i, pMag->data[0],pMag->data[1],pMag->data[2]);
+    fprintf(txtQuatFile,"%f, %f, %f, %f, %f\n", TIME_STEP*i, EKF_ctx.q_current->data[0],EKF_ctx.q_current->data[1],EKF_ctx.q_current->data[2], EKF_ctx.q_current->data[3]);
+    //gsl_vector_float_fprintf(txtMagFile,,"%f, %f, %f");
     // TEST_ASSERT_FLOAT_ARRAY_WITHIN(ESTIMATE_ERROR, q0, EKF_ctx.q_est->data,
     // 4); TEST_ASSERT_FLOAT_ARRAY_WITHIN(ESTIMATE_ERROR, q0,
     // EKF_ctx.q_current->data,
