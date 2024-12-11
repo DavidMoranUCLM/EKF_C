@@ -2,6 +2,7 @@
 
 #include "EKF_const.h"
 #include "gsl_quaternion_float.h"
+#include "gsl/gsl_math.h"
 #include "rotations.h"
 #include "unity.h"
 
@@ -30,6 +31,7 @@ void suiteSetUp(void);
 void resetTest(void);
 void verifyTest(void);
 
+void testInvFloat(void);
 void testGet_h(void);
 void testGetH(void);
 void testEKFInit(void);
@@ -43,6 +45,7 @@ void testStep(void);
 int main() {
   UNITY_BEGIN();
   // RUN_TEST(testEKFInit);
+  RUN_TEST(testInvFloat);
   RUN_TEST(testGet_h);
   RUN_TEST(testGetH);
   RUN_TEST(testStep);
@@ -78,6 +81,29 @@ void suiteSetUp(void) {}
 
 void resetTest(void) {}
 void verifyTest(void) {}
+
+
+
+void testInvFloat(void){
+  gsl_matrix_float *S = gsl_matrix_float_calloc(6,6);
+  gsl_matrix_float *invS = gsl_matrix_float_alloc(6,6);
+  gsl_matrix_float_set_identity(S);
+  invertMatrixFloat(&EKF_ctx, S, invS);
+
+  TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR,S->data, invS->data, 6*6);
+
+  gsl_matrix_float_set_zero(invS);
+
+  gsl_matrix_float_set_identity(S);
+  gsl_matrix_float_scale(S, 4);
+
+  invertMatrixFloat(&EKF_ctx, S, invS);
+
+  gsl_matrix_float_set_identity(S);
+  gsl_matrix_float_scale(S, 0.25);
+
+  TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, S->data, invS->data, 6*6);
+}
 
 void testEKFInit(void) {
   float q0[4] = {1, 0, 0, 0};
