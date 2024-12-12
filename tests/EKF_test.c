@@ -2,6 +2,7 @@
 
 #include "EKF_const.h"
 #include "gsl_quaternion_float.h"
+#include "gsl/gsl_math.h"
 #include "rotations.h"
 #include "unity.h"
 
@@ -30,6 +31,7 @@ void suiteSetUp(void);
 void resetTest(void);
 void verifyTest(void);
 
+void testInvFloat(void);
 void testGet_h(void);
 void testGetH(void);
 void testEKFInit(void);
@@ -43,6 +45,7 @@ void testStep(void);
 int main() {
   UNITY_BEGIN();
   // RUN_TEST(testEKFInit);
+  RUN_TEST(testInvFloat);
   RUN_TEST(testGet_h);
   RUN_TEST(testGetH);
   RUN_TEST(testStep);
@@ -78,6 +81,29 @@ void suiteSetUp(void) {}
 
 void resetTest(void) {}
 void verifyTest(void) {}
+
+
+
+void testInvFloat(void){
+  gsl_matrix_float *S = gsl_matrix_float_calloc(6,6);
+  gsl_matrix_float *invS = gsl_matrix_float_alloc(6,6);
+  gsl_matrix_float_set_identity(S);
+  invertMatrixFloat(&EKF_ctx, S, invS);
+
+  TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR,S->data, invS->data, 6*6);
+
+  gsl_matrix_float_set_zero(invS);
+
+  gsl_matrix_float_set_identity(S);
+  gsl_matrix_float_scale(S, 4);
+
+  invertMatrixFloat(&EKF_ctx, S, invS);
+
+  gsl_matrix_float_set_identity(S);
+  gsl_matrix_float_scale(S, 0.25);
+
+  TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, S->data, invS->data, 6*6);
+}
 
 void testEKFInit(void) {
   float q0[4] = {1, 0, 0, 0};
@@ -164,11 +190,15 @@ void testStep(void) {
   gsl_quat_float *pQw = gsl_quat_float_alloc();
   gsl_vector_float *pV = gsl_vector_float_calloc(3);
   gsl_vector_float_set(pV, 2, 1);
-  gsl_quat_float_fromAxis(pV, -0.1 * TIME_STEP, pQw);
+  gsl_quat_float_fromAxis(pV, -M_PI/2, pQw);
 
   rotation_t rotation;
   createRotationFromQuat(pQw, &rotation);
-  for (int i = 0; i < 100000; i++) {
+  FILE *txtMagFile = fopen("magLog.txt","w");
+  fprintf(txtMagFile,"T, mx, my, mz\n");
+  FILE *txtQuatFile = fopen("quatLog.txt","w");
+  fprintf(txtQuatFile,"T, qw, qx, qy, qz\n");
+  for (int i = 0; i < 10000; i++) {
     
 
     measure.acc[0] = gsl_vector_float_get(pAcc, 0);
@@ -184,7 +214,7 @@ void testStep(void) {
     ekfStep(&EKF_ctx, &measure, TIME_STEP*i);
 
 
-    gsl_quat_float_fromAxis(pV, -0.1 * TIME_STEP*i, pQw);
+    gsl_quat_float_fromAxis(pV, -0.1 * TIME_STEP*i - M_PI/2, pQw);
     createRotationFromQuat(pQw, &rotation);
 
     gsl_vector_float_set(pAcc, 0, 0);
@@ -198,6 +228,9 @@ void testStep(void) {
     rotateVector(pAcc, &rotation);
     rotateVector(pMag, &rotation);
 
+    fprintf(txtMagFile,"%f, %f, %f, %f\n", TIME_STEP*i, pMag->data[0],pMag->data[1],pMag->data[2]);
+    fprintf(txtQuatFile,"%f, %f, %f, %f, %f\n", TIME_STEP*i, EKF_ctx.q_current->data[0],EKF_ctx.q_current->data[1],EKF_ctx.q_current->data[2], EKF_ctx.q_current->data[3]);
+    //gsl_vector_float_fprintf(txtMagFile,,"%f, %f, %f");
     // TEST_ASSERT_FLOAT_ARRAY_WITHIN(ESTIMATE_ERROR, q0, EKF_ctx.q_est->data,
     // 4); TEST_ASSERT_FLOAT_ARRAY_WITHIN(ESTIMATE_ERROR, q0,
     // EKF_ctx.q_current->data,

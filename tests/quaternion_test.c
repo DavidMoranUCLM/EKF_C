@@ -80,7 +80,7 @@ void testQuatNormalize(void) {
     q->data[i] = ((float)rand() * 100) / (RAND_MAX);
   }
 
-  gsl_quat_float_normamilize(q);
+  gsl_quat_float_normalize(q);
 
   isNormalized(q);
 }
@@ -150,12 +150,12 @@ void testQuatProdNorm(void) {
   randQuat(q1);
   randQuat(q2);
 
-  gsl_quat_float_normamilize(q1);
-  gsl_quat_float_normamilize(q2);
+  gsl_quat_float_normalize(q1);
+  gsl_quat_float_normalize(q2);
 
   for (int i = 0; i < PROD_NORM_ITER; i++) {
     gsl_quat_float_product(q1, q2);
-    gsl_quat_float_normamilize(q1);
+    gsl_quat_float_normalize(q1);
     isNormalized(q1);
     randQuat(q1);
     randQuat(q2);

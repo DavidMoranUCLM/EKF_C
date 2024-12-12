@@ -55,7 +55,7 @@ extern float gsl_quat_float_norm(gsl_quat_float* pQ);
  * @brief Normalizes pQ
  * @param pQ Pointer to the quat to normalize
  */
-extern void gsl_quat_float_normamilize(gsl_quat_float* pQ);
+extern void gsl_quat_float_normalize(gsl_quat_float* pQ);
 
 /**
  * @brief Gets the conjugate of pQ
