@@ -66,7 +66,7 @@ void ekfInit(EKF_ctx_t *ctx, EKF_work_ctx_t *wk_ctx,
   ctx->mag = gsl_vector_float_calloc(3);
   ctx->velAng = gsl_vector_float_calloc(3);
 
-  ctx->latitude = LATITUDE_DEG * M_PI / 180;
+  ctx->latitude = LATITUDE_DEG * M_PI / 180.;
 
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
@@ -165,8 +165,8 @@ void deInitWorkSpace(EKF_ctx_t *ctx) {
   gsl_vector_float_free(wk->z);
   gsl_vector_float_free(wk->h);
 
-  // gsl_matrix_float_free(wk->M1_4_6);
-  // gsl_matrix_float_free(wk->M2_4_4);
+  gsl_matrix_float_free(wk->M1_4_6);
+  gsl_matrix_float_free(wk->M2_4_4);
   // gsl_vector_float_free(wk->v1);
   // gsl_vector_float_free(wk->v2);
 }
@@ -240,7 +240,7 @@ void getF(EKF_ctx_t *ctx) {
   gsl_quat_float_toMatrix(qVelAng, F);
 
   const gsl_matrix_float *pI = ctx->wk->I4;
-  gsl_matrix_float_scale(F, (ctx->currentTime - ctx->prevTime) / 2);
+  gsl_matrix_float_scale(F, (ctx->currentTime - ctx->prevTime) / 2.f);
   gsl_matrix_float_add(F, pI);
 
   gsl_quat_float_free(qVelAng);
@@ -297,16 +297,16 @@ void ekfCorrect(EKF_ctx_t *ctx) {
   gsl_matrix_float *K = ctx->wk->K;
   getK(ctx);
 
-  gsl_blas_sgemv(CblasNoTrans, 1, K, v, 0, ctx->q_current);
-  gsl_vector_float_add(ctx->q_current, ctx->q_est);
+  gsl_blas_sgemv(CblasNoTrans, 1, K, v, 0, ctx->q_current); // K*v
+  gsl_vector_float_add(ctx->q_current, ctx->q_est);         // q_est + K*v
 
   gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, -1, K, ctx->wk->H, 0,
-                 ctx->wk->M2_4_4);
+                 ctx->wk->M2_4_4); //-K*H
 
-  gsl_matrix_float_add(ctx->wk->M2_4_4, ctx->wk->I4);
+  gsl_matrix_float_add(ctx->wk->M2_4_4, ctx->wk->I4); // I-K*H
 
   gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->wk->M2_4_4, ctx->P_est, 0,
-                 ctx->P_current);
+                 ctx->P_current); // (I-K*H)*P_est
 }
 
 void get_h(EKF_ctx_t *ctx) {
@@ -422,24 +422,24 @@ int getH(EKF_ctx_t *ctx) {
   gsl_vector_float *pV2 = gsl_vector_float_alloc(3);
 
   gsl_vector_float_memcpy(pV2, ctx->horizonRefG);
-  gsl_vector_float_scale(pV2, gsl_quat_float_get(ctx->q_est, 0));
+  gsl_vector_float_scale(pV2, gsl_quat_float_get(ctx->q_est, 0)); // qw·g
 
   gsl_vector_float_memcpy(pV1, &u_g.vector);
-  gsl_vector_float_add(pV1, pV2);
+  gsl_vector_float_add(pV1, pV2); // ug + qw·g
 
-  skewSymFromVector(pV1, pM1);
+  skewSymFromVector(pV1, pM1); //[ug + qw·g]x
 
-  gsl_blas_sger(1, ctx->horizonRefG, pQv, pM2);
+  gsl_blas_sger(1, ctx->horizonRefG, pQv, pM2); //g⊗qv
   gsl_matrix_float_scale(pM2, -1.f);
-  gsl_matrix_float_add(pM1, pM2);
+  gsl_matrix_float_add(pM1, pM2); //[ug + qw·g]x - g⊗qv
 
   gsl_matrix_float_set_identity(pM2);
 
   float G_Qv_dot = 0;
-  gsl_blas_sdot(pQv, ctx->horizonRefG, &G_Qv_dot);
-  gsl_matrix_float_scale(pM2, G_Qv_dot);
+  gsl_blas_sdot(pQv, ctx->horizonRefG, &G_Qv_dot); // qv·g
+  gsl_matrix_float_scale(pM2, G_Qv_dot); // I * qv·g
 
-  gsl_matrix_float_add(pM1, pM2);
+  gsl_matrix_float_add(pM1, pM2); //[ug + qw·g]x - g⊗qv + I3 * qv·g
 
   // lowerRightH
 
@@ -447,24 +447,26 @@ int getH(EKF_ctx_t *ctx) {
   gsl_matrix_float_set_zero(pM2);
 
   gsl_vector_float_memcpy(pV2, ctx->horizonRefMag);
-  gsl_vector_float_scale(pV2, gsl_quat_float_get(ctx->q_est, 0));
+  gsl_vector_float_scale(pV2, gsl_quat_float_get(ctx->q_est, 0)); // qw*r
 
   gsl_vector_float_memcpy(pV1, &u_r.vector);
-  gsl_vector_float_add(pV1, pV2);
+  gsl_vector_float_add(pV1, pV2); // qw*r + ur
 
-  skewSymFromVector(pV1, pM1);
+  skewSymFromVector(pV1, pM1); // [qw*r + ur]x
 
-  gsl_blas_sger(1, ctx->horizonRefMag, pQv, pM2);
+  gsl_blas_sger(1, ctx->horizonRefMag, pQv, pM2); //r⊗qv
   gsl_matrix_float_scale(pM2, -1.f);
-  gsl_matrix_float_add(pM1, pM2);
+  gsl_matrix_float_add(pM1, pM2); // [qw*r + ur]x - r⊗qv
 
   gsl_matrix_float_set_identity(pM2);
 
   float Mag_Qv_dot = 0;
-  gsl_blas_sdot(pQv, ctx->horizonRefMag, &Mag_Qv_dot);
-  gsl_matrix_float_scale(pM2, Mag_Qv_dot);
+  gsl_blas_sdot(pQv, ctx->horizonRefMag, &Mag_Qv_dot); // qv·r
+  gsl_matrix_float_scale(pM2, Mag_Qv_dot); // I * qv·r
 
-  gsl_matrix_float_add(pM1, pM2);
+  gsl_matrix_float_add(pM1, pM2); // [qw*r + ur]x - r⊗qv + I * qv·r
+
+
   gsl_matrix_float_scale(H, 2.f);
 
   gsl_matrix_float_free(pM2);
@@ -485,23 +487,23 @@ int getR(EKF_ctx_t *ctx) {
   return 0;
 }
 
+//S = H * P_est * trans(H) + R
 int getS(EKF_ctx_t *ctx) {
   getR(ctx);
   gsl_matrix_float *S = ctx->wk->S;
   gsl_matrix_float *H = ctx->wk->H;
   gsl_matrix_float_set_zero(ctx->wk->S);
 
-  gsl_matrix_float *bufferMat = gsl_matrix_float_calloc(4, 6);
+  gsl_matrix_float *bufferMat = ctx->wk->M1_4_6;
 
-  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, ctx->P_est, H, 0, bufferMat);
-  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, H, bufferMat, 0, S);
-  gsl_matrix_float_add(S, ctx->wk->R);
-
-  gsl_matrix_float_free(bufferMat);
+  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, ctx->P_est, H, 0, bufferMat); // P_est * trans(H)
+  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, H, bufferMat, 0, S); // H * P_est * trans(H)
+  gsl_matrix_float_add(S, ctx->wk->R); // H * P_est * trans(H) + R
 
   return 0;
 }
 
+// K = P_est * trans(H) * inv(S)
 int getK(EKF_ctx_t *ctx) {
   getH(ctx);
   getS(ctx);
@@ -510,20 +512,20 @@ int getK(EKF_ctx_t *ctx) {
   gsl_matrix_float *S = ctx->wk->S;
   gsl_matrix_float *invS = ctx->wk->invS;
 
-  invertMatrixFloat(ctx, S, invS);
+  invertMatrixFloat(ctx, S, invS); // inv(S)
 
   gsl_blas_sgemm(CblasTrans, CblasNoTrans, 1, ctx->wk->H, invS, 0,
-                 ctx->wk->M1_4_6);
+                 ctx->wk->M1_4_6); // trans(H) * inv(S)
   gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->P_est, ctx->wk->M1_4_6, 0,
-                 K);
+                 K); // P_est * trans(H) * inv(S)
 
   return 0;
 }
 
 void invertMatrixFloat(EKF_ctx_t *ctx, const gsl_matrix_float *S,
                        gsl_matrix_float *invS) {
-  // K = P*H'*inv(S);
 
+  // floatS -> doubleS
   gsl_matrix *doubleS = ctx->wk->doubleS;
   for (int i = 0; i < S->size1; i++) {
     for (int j = 0; j < S->size2; j++) {
@@ -536,8 +538,10 @@ void invertMatrixFloat(EKF_ctx_t *ctx, const gsl_matrix_float *S,
   gsl_matrix_set_zero(doubleInvS);
   int signum = 0;
   gsl_linalg_LU_decomp(doubleS, p, &signum);
-  gsl_linalg_LU_invert(doubleS, p, doubleInvS);
+  gsl_linalg_LU_invert(doubleS, p, doubleInvS); // double inv S
 
+
+  // doubleInvS -> floatInvS
   for (int i = 0; i < invS->size1; i++) {
     for (int j = 0; j < invS->size2; j++) {
       gsl_matrix_float_set(invS, i, j, gsl_matrix_get(doubleInvS, i, j));
