@@ -204,19 +204,22 @@ void testStep(void) {
   gsl_vector_float_set(pVelAng, 1, 0);
   gsl_vector_float_set(pVelAng, 2, 0.1);
 
+  float VelAngNorm;
+  gsl_blas_sdot(pVelAng,pVelAng,&VelAngNorm);
+  VelAngNorm = sqrtf(VelAngNorm);
+
   measures_t measure;
 
   gsl_quat_float *pQw = gsl_quat_float_alloc();
-  gsl_vector_float *pV = gsl_vector_float_calloc(3);
-  gsl_vector_float_set(pV, 2, 1);
-  gsl_quat_float_fromAxis(pV, 0, pQw);
+  gsl_quat_float_fromAxis(pVelAng, 0, pQw);
 
   rotation_t rotation;
   createRotationFromQuat(pQw, &rotation);
 
-
-  csvLog_t magLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog, SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog;
+  csvLog_t magLog, accLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog, SLog,
+      PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog;
   logMatrixCSV_init(&magLog, pMag, "magLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&accLog, pAcc, "accLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&qEstLog, EKF_ctx.q_est, "qEstLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&expectedQuatLog, pQw, "quatExpectedLog.txt", GSL_VECTOR);
@@ -230,9 +233,9 @@ void testStep(void) {
   logMatrixCSV_init(&WLog, EKF_ctx.wk->W, "WLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&QLog, EKF_ctx.wk->Q, "QLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&RLog, EKF_ctx.wk->R, "RLog.txt", GSL_MATRIX);
+  logMatrixCSV_init(&KLog, EKF_ctx.wk->K, "KLog.txt", GSL_MATRIX);
 
-
-  for (int i = 0; i < 1000; i++) {
+  for (int i = 0; i < 10000; i++) {
     measure.acc[0] = gsl_vector_float_get(pAcc, 0);
     measure.acc[1] = gsl_vector_float_get(pAcc, 1);
     measure.acc[2] = gsl_vector_float_get(pAcc, 2);
@@ -242,9 +245,11 @@ void testStep(void) {
     measure.velAng[0] = gsl_vector_float_get(pVelAng, 0);
     measure.velAng[1] = gsl_vector_float_get(pVelAng, 1);
     measure.velAng[2] = gsl_vector_float_get(pVelAng, 2);
+
     ekfStep(&EKF_ctx, &measure, TIME_STEP * i);
 
-    gsl_quat_float_fromAxis(pV, -0.1 * TIME_STEP * i, pQw);
+    gsl_quat_float_fromAxis(pVelAng, VelAngNorm * TIME_STEP * i, pQw);
+    gsl_quat_float_conjugate(pQw); //Giro de sistema de coordenadas, no de vector
     createRotationFromQuat(pQw, &rotation);
 
     gsl_vector_float_set(pAcc, 0, 0);
@@ -255,8 +260,9 @@ void testStep(void) {
     gsl_vector_float_set(pMag, 1, 0);
     gsl_vector_float_set(pMag, 2, -sinf(EKF_ctx.latitude));
 
-    rotateVector(pAcc, &rotation);
     rotateVector(pMag, &rotation);
+    rotateVector(pAcc, &rotation);
+    
 
     gsl_quat_float_conjugate(pQw);
 

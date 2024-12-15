@@ -118,20 +118,23 @@ int gsl_quat_float_fromAxis(gsl_vector_float *pAxis, const float angleRad,
     return -1;
   }
 
-  if (gsl_quat_float_norm(pAxis) < QUAT_MINIMUM_AXIS_NORM) {
-    return -1;
-  }
-
   if (pQ == NULL) {
     return -1;
   }
 
+  float norm = 0;
+  for (int i = 0; i < 3; i++) {
+    norm += pAxis->data[i] * pAxis->data[i];
+  }
+
+  norm /= sqrtf(norm);
+
   float sinHalfAngle = sinf(angleRad / 2);
 
   pQ->data[0] = cosf(angleRad / 2);
-  pQ->data[1] = pAxis->data[0] * sinHalfAngle;
-  pQ->data[2] = pAxis->data[1] * sinHalfAngle;
-  pQ->data[3] = pAxis->data[2] * sinHalfAngle;
+  pQ->data[1] = pAxis->data[0] * sinHalfAngle / norm;
+  pQ->data[2] = pAxis->data[1] * sinHalfAngle / norm;
+  pQ->data[3] = pAxis->data[2] * sinHalfAngle / norm;
 
   gsl_quat_float_normalize(pQ);
   return 0;
@@ -225,7 +228,7 @@ void gsl_quat_float_toMatrix(gsl_quat_float *pQuat,
                              gsl_matrix_float *pQuatMat) {
   gsl_matrix_float_set_zero(pQuatMat);
   gsl_matrix_float *pMatrixT =
-      gsl_matrix_float_calloc(QUAT_MATRIX_SIZE, QUAT_MATRIX_SIZE);
+      gsl_matrix_float_calloc(pQuatMat->size1, pQuatMat->size2);
 
   gsl_matrix_float_set(pQuatMat, 0, 1, -gsl_quat_float_get(pQuat, 1));
   gsl_matrix_float_set(pQuatMat, 0, 2, -gsl_quat_float_get(pQuat, 2));

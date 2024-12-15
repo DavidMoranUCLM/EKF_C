@@ -1,10 +1,11 @@
 %clear
 close all
 
-T_window_s = [230,250];
+T_window_s = [200,1000];
 XSelect = 240;
 
 measuredMag = readtable("../build/Linux/tests/magLog.txt");
+accLog = readtable("../build/Linux/tests/accLog.txt");
 measuredQ = readtable("../build/Linux/tests/quatLog.txt");
 expectedQ = readtable("../build/Linux/tests/quatExpectedLog.txt");
 estimatedQ = readtable("../build/Linux/tests/qEstLog.txt");
@@ -17,6 +18,7 @@ FLog = readtable("../build/Linux/tests/FLog.txt");
 WLog = readtable("../build/Linux/tests/WLog.txt");
 QLog = readtable("../build/Linux/tests/QLog.txt");
 RLog = readtable("../build/Linux/tests/RLog.txt");
+KLog = readtable("../build/Linux/tests/KLog.txt");
 
 figure(1)
 subplot(1,2,1)
@@ -35,8 +37,8 @@ xline(XSelect);
 title("Expected")
 xlim(T_window_s);
 
-rows = 6;
-col = 2;
+rows = 4;
+col = 3;
 
 figure(2)
 subplot(rows,col,1)
@@ -44,14 +46,16 @@ plot(measuredv.Variables)
 hold on
 xline(XSelect);
 xlim(T_window_s)
-title("measurement divergence")
+title("measurement-estimation divergence")
 
 subplot(rows,col,2)
 plot(measuredMag.Variables)
 hold on
+plot(accLog.Variables./10, '--')
 xline(XSelect);
 xlim(T_window_s)
-title("measured mag")
+title("measured mag-acc")
+legend
 
 subplot(rows,col,3)
 plot(PLog.Variables)
@@ -115,3 +119,10 @@ hold on
 xline(XSelect);
 xlim(T_window_s)
 title("invSLog")
+
+subplot(rows,col,12)
+plot(KLog.Variables)
+hold on
+xline(XSelect);
+xlim(T_window_s)
+title("KLog")

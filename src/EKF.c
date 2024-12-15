@@ -66,7 +66,7 @@ void ekfInit(EKF_ctx_t *ctx, EKF_work_ctx_t *wk_ctx,
   ctx->mag = gsl_vector_float_calloc(3);
   ctx->velAng = gsl_vector_float_calloc(3);
 
-  ctx->latitude = LATITUDE_DEG * M_PI / 180.;
+  ctx->latitude = LATITUDE_RAD;
 
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
@@ -199,10 +199,7 @@ void qEst(EKF_ctx_t *ctx) {
   gsl_quat_float *qVelAng = gsl_quat_float_alloc();
   gsl_matrix_float *q1Mat = gsl_matrix_float_alloc(4, 4);
 
-  gsl_quat_float_set(qVelAng, 0, 0);
-  gsl_quat_float_set(qVelAng, 1, gsl_vector_float_get(ctx->velAng, 0));
-  gsl_quat_float_set(qVelAng, 2, gsl_vector_float_get(ctx->velAng, 1));
-  gsl_quat_float_set(qVelAng, 3, gsl_vector_float_get(ctx->velAng, 2));
+  gsl_quat_float_fromVector(ctx->velAng, qVelAng);
 
   gsl_matrix_float *qVelAngMat = gsl_matrix_float_alloc(4, 4);
   gsl_quat_float_toMatrix(qVelAng, qVelAngMat);
@@ -212,7 +209,7 @@ void qEst(EKF_ctx_t *ctx) {
   gsl_matrix_float_scale(qVelAngMat, (ctx->currentTime - ctx->prevTime) / 2.f);
   gsl_matrix_float_add(q1Mat, qVelAngMat);
 
-  gsl_blas_sgemv(CblasNoTrans, 1.F, q1Mat, ctx->q_prev, 0, ctx->q_est);
+  gsl_blas_sgemv(CblasNoTrans, 1, q1Mat, ctx->q_prev, 0, ctx->q_est);
 
   gsl_matrix_float_free(qVelAngMat);
   gsl_matrix_float_free(q1Mat);
@@ -268,25 +265,28 @@ void getW(EKF_ctx_t *ctx) {
   gsl_matrix_float_scale(W, (ctx->currentTime - ctx->prevTime) / 2.f);
 }
 void getQ(EKF_ctx_t *ctx) {
-  gsl_matrix_float *pStdDevMat = gsl_matrix_float_alloc(3, 3);
-  gsl_matrix_float *pBufferMat = gsl_matrix_float_calloc(3, 4);
+  //gsl_matrix_float *pStdDevMat = gsl_matrix_float_alloc(3, 3);
+  //gsl_matrix_float *pBufferMat = gsl_matrix_float_calloc(3, 4);
   getW(ctx);
-  gsl_matrix_float_set_identity(pStdDevMat);
-  gsl_matrix_float_scale(pStdDevMat, GYRO_STD_DEVIATION);
-  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, pStdDevMat, ctx->wk->W, 0,
-                 pBufferMat);
-  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->wk->W, pBufferMat, 0,
-                 ctx->wk->Q);
+  // gsl_matrix_float_set_identity(pStdDevMat);
+  // gsl_matrix_float_scale(pStdDevMat, GYRO_STD_DEVIATION);
+  // gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, pStdDevMat, ctx->wk->W, 0,
+  //                pBufferMat);
+  // gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->wk->W, pBufferMat, 0,
+  //                ctx->wk->Q);
 
-  gsl_matrix_float_free(pStdDevMat);
-  gsl_matrix_float_free(pBufferMat);
+  gsl_blas_sgemm(CblasNoTrans, CblasTrans, GYRO_STD_DEVIATION, ctx->wk->W, ctx->wk->W, 0,
+                  ctx->wk->Q);
+
+  //gsl_matrix_float_free(pStdDevMat);
+  //gsl_matrix_float_free(pBufferMat);
 }
 
 void ekfCorrect(EKF_ctx_t *ctx) {
   gsl_vector_float *z = ctx->wk->z;
   gsl_vector_float *v;
   for (uint8_t i = 0; i < 3; i++) {
-    gsl_vector_float_set(z, i, gsl_vector_float_get(ctx->acc, i));
+    gsl_vector_float_set(z, i, gsl_vector_float_get(ctx->acc, i)/9.8);
     gsl_vector_float_set(z, i + 3, gsl_vector_float_get(ctx->mag, i));
   }
 
