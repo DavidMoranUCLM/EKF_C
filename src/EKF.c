@@ -71,7 +71,7 @@ void ekfInit(EKF_ctx_t *ctx, EKF_work_ctx_t *wk_ctx,
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
   gsl_vector_float_set(ctx->horizonRefG, 1, 0);
-  gsl_vector_float_set(ctx->horizonRefG, 2, 9.8);
+  gsl_vector_float_set(ctx->horizonRefG, 2, 1);
 
   ctx->horizonRefMag = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefMag, 0, cosf(ctx->latitude));
