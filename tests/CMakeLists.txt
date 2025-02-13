@@ -1,4 +1,6 @@
 add_compile_options(-Wall)
+add_compile_options(-pg)
+add_link_options(-pg)
 
 add_executable(TEST_QUATERNION quaternion_test.c)
 target_include_directories(TEST_QUATERNION PUBLIC ../include ../unity/src)

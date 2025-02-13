@@ -1,7 +1,7 @@
 %clear
 close all
 
-T_window_s = [200,1000];
+T_window_s = [200,50000];
 XSelect = 240;
 
 measuredMag = readtable("../build/Linux/tests/magLog.txt");
