@@ -3,6 +3,8 @@
 #include "EKF_const.h"
 #include "gsl/gsl_math.h"
 #include "gsl/gsl_matrix_float.h"
+#include "gsl/gsl_randist.h"
+#include "gsl/gsl_rng.h"
 #include "gsl/gsl_vector_float.h"
 #include "gsl_quaternion_float.h"
 #include "rotations.h"
@@ -12,8 +14,10 @@
 #define FLOAT_ERROR 1e-6f
 #define ESTIMATE_ERROR 1e-1f
 #define CORRECTION_ERROR 1e-2f
-#define TIME_STEP 1e-1f
+#define TIME_STEP 1e-2f
 #define MAX_LOGS_NUMBER 50
+
+#define NUM_ITERATIONS 50000
 
 /**
  * Private declarations
@@ -29,9 +33,11 @@ typedef enum matrix_vector_e {
 } matrix_vector_t;
 
 typedef struct csvLog_s {
+  uint64_t index;
   matrix_vector_t type;
   void *pMV;
-  FILE *file;
+  char filename[50];
+  void *buffer;
 } csvLog_t;
 
 /**
@@ -52,11 +58,12 @@ void testGetH(void);
 void testEKFInit(void);
 void testStep(void);
 
-void logMatrixCSV_init(csvLog_t *csv, void *pM, char filename[],
+void logMatrixCSV_init(csvLog_t *csv, void *pM, const char filename[],
                        matrix_vector_t type);
 void logMatrixCSV_update(csvLog_t *csv);
 void logMatrixCSV_updateAll();
 void logMatrixCSV_deinit(csvLog_t *csv);
+void logMatrixCSV_deinitAll();
 
 /**
  * Main
@@ -200,12 +207,12 @@ void testStep(void) {
   gsl_vector_float_set(pMag, 1, 0);
   gsl_vector_float_set(pMag, 2, -sinf(EKF_ctx.latitude));
 
-  gsl_vector_float_set(pVelAng, 0, 0);
+  gsl_vector_float_set(pVelAng, 0, 0.1);
   gsl_vector_float_set(pVelAng, 1, 0);
-  gsl_vector_float_set(pVelAng, 2, 0.1);
+  gsl_vector_float_set(pVelAng, 2, 0);
 
   float VelAngNorm;
-  gsl_blas_sdot(pVelAng,pVelAng,&VelAngNorm);
+  gsl_blas_sdot(pVelAng, pVelAng, &VelAngNorm);
   VelAngNorm = sqrtf(VelAngNorm);
 
   measures_t measure;
@@ -216,8 +223,8 @@ void testStep(void) {
   rotation_t rotation;
   createRotationFromQuat(pQw, &rotation);
 
-  csvLog_t magLog, accLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog, SLog,
-      PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog;
+  csvLog_t magLog, accLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog,
+      SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog;
   logMatrixCSV_init(&magLog, pMag, "magLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&accLog, pAcc, "accLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
@@ -235,7 +242,9 @@ void testStep(void) {
   logMatrixCSV_init(&RLog, EKF_ctx.wk->R, "RLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&KLog, EKF_ctx.wk->K, "KLog.txt", GSL_MATRIX);
 
-  for (int i = 0; i < 10000; i++) {
+  gsl_rng *randHandle = gsl_rng_alloc(gsl_rng_default);
+
+  for (int i = 0; i < NUM_ITERATIONS; i++) {
     measure.acc[0] = gsl_vector_float_get(pAcc, 0);
     measure.acc[1] = gsl_vector_float_get(pAcc, 1);
     measure.acc[2] = gsl_vector_float_get(pAcc, 2);
@@ -249,12 +258,14 @@ void testStep(void) {
     ekfStep(&EKF_ctx, &measure, TIME_STEP * i);
 
     gsl_quat_float_fromAxis(pVelAng, VelAngNorm * TIME_STEP * i, pQw);
-    gsl_quat_float_conjugate(pQw); //Giro de sistema de coordenadas, no de vector
+    gsl_quat_float_conjugate(
+        pQw);  // Giro de sistema de coordenadas, no de vector
     createRotationFromQuat(pQw, &rotation);
 
-    gsl_vector_float_set(pAcc, 0, 0);
-    gsl_vector_float_set(pAcc, 1, 0);
-    gsl_vector_float_set(pAcc, 2, 9.8);
+    gsl_vector_float_set(pAcc, 0, 0 + (float)gsl_ran_gaussian(randHandle, 0));
+    gsl_vector_float_set(pAcc, 1, 0 + (float)gsl_ran_gaussian(randHandle, 0));
+    gsl_vector_float_set(pAcc, 2,
+                         9.8 + (float)gsl_ran_gaussian(randHandle, 0));
 
     gsl_vector_float_set(pMag, 0, cosf(EKF_ctx.latitude));
     gsl_vector_float_set(pMag, 1, 0);
@@ -262,39 +273,30 @@ void testStep(void) {
 
     rotateVector(pMag, &rotation);
     rotateVector(pAcc, &rotation);
-    
 
     gsl_quat_float_conjugate(pQw);
-
     logMatrixCSV_updateAll();
   }
+  logMatrixCSV_deinitAll();
 }
 
 csvLog_t *allCSVLogs[MAX_LOGS_NUMBER] = {NULL};
-void logMatrixCSV_init(csvLog_t *csv, void *pMV, char filename[],
+void logMatrixCSV_init(csvLog_t *csv, void *pMV, const char filename[],
                        matrix_vector_t type) {
-  csv->file = fopen(filename, "w");
+  csv->index = 0;
+  snprintf(csv->filename, sizeof(csv->filename), "%s", filename);
   csv->type = type;
   csv->pMV = pMV;
 
   switch (type) {
     case GSL_VECTOR:
       gsl_vector_float *pV = pMV;
-      for (int i = 0; i <= pV->size - 2; i++) {
-        fprintf(csv->file, "a%d,", i);
-      }
-      fprintf(csv->file, "a%lu\n", pV->size - 1);
-
+      csv->buffer = malloc(pV->size * sizeof(float) * NUM_ITERATIONS);
       break;
     case GSL_MATRIX:
       gsl_matrix_float *pM = pMV;
-      for (int i = 0; i <= pM->size1 - 1; i++) {
-        for (int j = 0; j <= pM->size2 - 2; j++) {
-          fprintf(csv->file, "a%d-%d,", i, j);
-        }
-      }
-      fprintf(csv->file, "a%lu-%lu\n", pM->size1 - 1, pM->size2 - 1);
-
+      csv->buffer =
+          malloc(pM->size1 * pM->size2 * sizeof(float) * NUM_ITERATIONS);
     default:
       break;
   }
@@ -308,28 +310,32 @@ void logMatrixCSV_init(csvLog_t *csv, void *pMV, char filename[],
 }
 
 void logMatrixCSV_update(csvLog_t *csv) {
+  float *buffer = csv->buffer;
+
   switch (csv->type) {
     case GSL_VECTOR:
       gsl_vector_float *pV = csv->pMV;
-      for (int i = 0; i <= pV->size - 2; i++) {
-        fprintf(csv->file, "%f,", gsl_vector_float_get(pV, i));
+
+      for (int i = 0; i <= pV->size - 1; i++) {
+        buffer[(csv->index) * pV->size + i] = gsl_vector_float_get(pV, i);
       }
-      fprintf(csv->file, "%f\n", gsl_vector_float_get(pV, pV->size - 1));
 
       break;
     case GSL_MATRIX:
       gsl_matrix_float *pM = csv->pMV;
+
       for (int i = 0; i <= pM->size1 - 1; i++) {
-        for (int j = 0; j <= pM->size2 - 2; j++) {
-          fprintf(csv->file, "%f,", gsl_matrix_float_get(pM, i, j));
+        for (int j = 0; j <= pM->size2 - 1; j++) {
+          buffer[(csv->index) * pM->size1 * pM->size2 + i+j] =
+              gsl_matrix_float_get(pM, i, j);
         }
       }
-      fprintf(csv->file, "%f\n",
-              gsl_matrix_float_get(pM, pM->size1 - 1, pM->size2 - 1));
 
     default:
       break;
   }
+
+  csv->index++;
 }
 
 void logMatrixCSV_updateAll() {
@@ -340,4 +346,58 @@ void logMatrixCSV_updateAll() {
   }
 }
 
-void logMatrixCSV_deinit(csvLog_t *csv) { fclose(csv->file); }
+void logMatrixCSV_deinit(csvLog_t *csv) {
+  FILE *file = fopen(csv->filename, "w");
+  float *buffer = csv->buffer;
+
+  switch (csv->type) {
+    case GSL_VECTOR:
+      gsl_vector_float *pV = csv->pMV;
+      for (int i = 0; i <= pV->size - 2; i++) {
+        fprintf(file, "a%d,", i);
+      }
+      fprintf(file, "a%lu\n", pV->size - 1);
+
+      for (int row = 0; row < NUM_ITERATIONS; row++) {
+        for (int i = 0; i <= pV->size - 2; i++) {
+          fprintf(file, "%f,", buffer[row * pV->size + i]);
+        }
+        fprintf(file, "%f\n", buffer[row * pV->size - 1]);
+      }
+
+      break;
+    case GSL_MATRIX:
+      gsl_matrix_float *pM = csv->pMV;
+
+      for (int i = 0; i <= pM->size1 - 1; i++) {
+        for (int j = 0; j <= pM->size2 - 1; j++) {
+          fprintf(file, "a%d-%d,", i, j);
+        }
+      }
+      fprintf(file, "a%lu-%lu\n", pM->size1 - 1, pM->size2 - 1);
+
+      for (int row = 0; row < NUM_ITERATIONS; row++) {
+        for (int i = 0; i <= pM->size1 - 1; i++) {
+          for (int j = 0; j <= pM->size2 - 1; j++) {
+            fprintf(file, "%f,", buffer[row * pM->size1 * pM->size2 + i + j]);
+          }
+        }
+        fprintf(file, "%f\n",
+                buffer[row * pM->size1 * pM->size2 - 1]);
+      }
+
+    default:
+      break;
+  }
+
+  free(buffer);
+}
+
+void logMatrixCSV_deinitAll() {
+  for (int i = 0; i < MAX_LOGS_NUMBER; i++) {
+    if (allCSVLogs[i] != NULL) {
+      logMatrixCSV_deinit(allCSVLogs[i]);
+      allCSVLogs[i] = NULL;
+    }
+  }
+}
