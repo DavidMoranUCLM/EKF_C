@@ -51,9 +51,13 @@ void PInitEstimate(EKF_ctx_t *ctx);
 /**
  * Public Functions Definitions
  */
-void ekfInit(EKF_ctx_t *ctx, EKF_work_ctx_t *wk_ctx,
-             const measures_t *measures) {
-  ctx->wk = wk_ctx;
+void ekfInit(EKF_ctx_t *ctx, const measures_t *measures) {
+  // Allocate workspace if not already allocated
+  if (!ctx->wk) {
+    ctx->wk = malloc(sizeof(EKF_work_ctx_t));
+  }
+  initWorkSpace(ctx);
+
   ctx->q_current = gsl_quat_float_calloc();
   ctx->q_est = gsl_quat_float_calloc();
   ctx->q_prev = gsl_quat_float_calloc();
@@ -84,7 +88,6 @@ void ekfInit(EKF_ctx_t *ctx, EKF_work_ctx_t *wk_ctx,
     gsl_vector_float_set(ctx->velAng, i, measures->velAng[i]);
   }
 
-  initWorkSpace(ctx);
   ekfInitConditions(ctx, measures);
 }
 void ekfDeinit(EKF_ctx_t *ctx) {
@@ -104,6 +107,7 @@ void ekfDeinit(EKF_ctx_t *ctx) {
   gsl_vector_float_free(ctx->horizonRefMag);
 
   deInitWorkSpace(ctx);
+  free(ctx->wk);
 }
 void ekfStep(EKF_ctx_t *ctx, const measures_t *measures,
              const float currentTime) {
