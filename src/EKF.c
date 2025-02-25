@@ -96,12 +96,12 @@ void ekfDeinit(EKF_ctx_t *ctx) {
   gsl_matrix_float_free(ctx->P_est);
   gsl_matrix_float_free(ctx->P_prev);
 
-  gsl_quat_float_free(ctx->acc);
-  gsl_quat_float_free(ctx->mag);
-  gsl_quat_float_free(ctx->velAng);
+  gsl_vector_float_free(ctx->acc);
+  gsl_vector_float_free(ctx->mag);
+  gsl_vector_float_free(ctx->velAng);
 
-  gsl_quat_float_free(ctx->horizonRefG);
-  gsl_quat_float_free(ctx->horizonRefMag);
+  gsl_vector_float_free(ctx->horizonRefG);
+  gsl_vector_float_free(ctx->horizonRefMag);
 
   deInitWorkSpace(ctx);
 }
@@ -142,6 +142,23 @@ void initWorkSpace(EKF_ctx_t *ctx) {
 
   wk->z = gsl_vector_float_calloc(6);
   wk->h = gsl_vector_float_calloc(6);
+
+  // NEW: Allocate double-precision buffers for QR inversion (size 6x6)
+  wk->inv_tmpMatrix_d = gsl_matrix_alloc(6, 6);
+  wk->inv_tmpTau_d = gsl_vector_alloc(6);
+  wk->inv_tmpB_d = gsl_vector_alloc(6);
+  wk->inv_tmpX_d = gsl_vector_alloc(6);
+
+  // NEW: Allocate temporary buffers once
+  wk->tmpQuat = gsl_quat_float_calloc();
+  wk->tmp4x4 = gsl_matrix_float_calloc(4, 4);
+  wk->tmp3x3 = gsl_matrix_float_calloc(3, 3);
+  wk->tmpStdDevMat = gsl_matrix_float_calloc(3, 3);
+  wk->tmpBufferMat = gsl_matrix_float_calloc(3, 4);
+  wk->tmp3vec = gsl_vector_float_calloc(3);
+
+  // NEW: Allocate tmpRTransK (6x4) for R*Trans(K)
+  wk->tmpRTransK = gsl_matrix_float_calloc(6, 4);
 }
 
 void deInitWorkSpace(EKF_ctx_t *ctx) {
@@ -165,10 +182,25 @@ void deInitWorkSpace(EKF_ctx_t *ctx) {
   gsl_vector_float_free(wk->z);
   gsl_vector_float_free(wk->h);
 
-  // gsl_matrix_float_free(wk->M1_4_6);
-  // gsl_matrix_float_free(wk->M2_4_4);
-  // gsl_vector_float_free(wk->v1);
-  // gsl_vector_float_free(wk->v2);
+  gsl_matrix_float_free(wk->M1_4_6);
+  gsl_matrix_float_free(wk->M2_4_4);
+
+  // NEW: Free double-precision buffers
+  gsl_matrix_free(wk->inv_tmpMatrix_d);
+  gsl_vector_free(wk->inv_tmpTau_d);
+  gsl_vector_free(wk->inv_tmpB_d);
+  gsl_vector_free(wk->inv_tmpX_d);
+
+  // NEW: Free preallocated temporary buffers
+  gsl_quat_float_free(wk->tmpQuat);
+  gsl_matrix_float_free(wk->tmp4x4);
+  gsl_matrix_float_free(wk->tmp3x3);
+  gsl_matrix_float_free(wk->tmpStdDevMat);
+  gsl_matrix_float_free(wk->tmpBufferMat);
+  gsl_vector_float_free(wk->tmp3vec);
+
+  // NEW: Free tmpRTransK
+  gsl_matrix_float_free(wk->tmpRTransK);
 }
 
 void ekfUpdate(EKF_ctx_t *ctx, const measures_t *measures,
@@ -195,28 +227,26 @@ void ekfEstimate(EKF_ctx_t *ctx) {
   qEst(ctx);
   PEst(ctx);
 }
+
+// Modified qEst: use tmpQuat and tmp4x4 instead of per-call allocations.
 void qEst(EKF_ctx_t *ctx) {
-  gsl_quat_float *qVelAng = gsl_quat_float_alloc();
-  gsl_matrix_float *q1Mat = gsl_matrix_float_alloc(4, 4);
+  EKF_work_ctx_t *wk = ctx->wk;
+  // Use wk->tmpQuat and wk->tmp4x4 as temporary buffers
+  gsl_quat_float_set(wk->tmpQuat, 0, 0);
+  gsl_quat_float_set(wk->tmpQuat, 1, gsl_vector_float_get(ctx->velAng, 0));
+  gsl_quat_float_set(wk->tmpQuat, 2, gsl_vector_float_get(ctx->velAng, 1));
+  gsl_quat_float_set(wk->tmpQuat, 3, gsl_vector_float_get(ctx->velAng, 2));
 
-  gsl_quat_float_set(qVelAng, 0, 0);
-  gsl_quat_float_set(qVelAng, 1, gsl_vector_float_get(ctx->velAng, 0));
-  gsl_quat_float_set(qVelAng, 2, gsl_vector_float_get(ctx->velAng, 1));
-  gsl_quat_float_set(qVelAng, 3, gsl_vector_float_get(ctx->velAng, 2));
+  gsl_matrix_float *qVelAngMat = wk->tmp4x4;
+  gsl_quat_float_toMatrix(wk->tmpQuat, qVelAngMat);
 
-  gsl_matrix_float *qVelAngMat = gsl_matrix_float_alloc(4, 4);
-  gsl_quat_float_toMatrix(qVelAng, qVelAngMat);
-
+  gsl_matrix_float *q1Mat =
+      wk->M2_4_4;  // reuse existing workspace if dimensions match (4x4)
   gsl_matrix_float_set_identity(q1Mat);
-
   gsl_matrix_float_scale(qVelAngMat, (ctx->currentTime - ctx->prevTime) / 2.f);
   gsl_matrix_float_add(q1Mat, qVelAngMat);
-
   gsl_blas_sgemv(CblasNoTrans, 1.F, q1Mat, ctx->q_prev, 0, ctx->q_est);
-
-  gsl_matrix_float_free(qVelAngMat);
-  gsl_matrix_float_free(q1Mat);
-  gsl_quat_float_free(qVelAng);
+  // No alloc/free in this function now.
 }
 
 void PEst(EKF_ctx_t *ctx) {
@@ -233,18 +263,17 @@ void PEst(EKF_ctx_t *ctx) {
   gsl_matrix_float_add(ctx->P_est, Q);
 }
 
+// Modify getF to use tmpQuat (from workspace) instead of allocating a new one.
 void getF(EKF_ctx_t *ctx) {
-  gsl_matrix_float *F = ctx->wk->F;
-  gsl_quat_float *qVelAng = gsl_quat_float_alloc();
-  gsl_quat_float_fromVector(ctx->velAng, qVelAng);
-  gsl_quat_float_toMatrix(qVelAng, F);
-
-  const gsl_matrix_float *pI = ctx->wk->I4;
-  gsl_matrix_float_scale(F, (ctx->currentTime - ctx->prevTime) / 2);
-  gsl_matrix_float_add(F, pI);
-
-  gsl_quat_float_free(qVelAng);
+  EKF_work_ctx_t *wk = ctx->wk;
+  // Use workspace tmpQuat instead of a new allocation.
+  gsl_quat_float_fromVector(ctx->velAng, wk->tmpQuat);
+  gsl_quat_float_toMatrix(wk->tmpQuat, ctx->wk->F);
+  const gsl_matrix_float *pI = wk->I4;
+  gsl_matrix_float_scale(ctx->wk->F, (ctx->currentTime - ctx->prevTime) / 2);
+  gsl_matrix_float_add(ctx->wk->F, pI);
 }
+
 void getW(EKF_ctx_t *ctx) {
   gsl_matrix_float *W = ctx->wk->W;
   gsl_matrix_float_set_zero(W);
@@ -267,37 +296,37 @@ void getW(EKF_ctx_t *ctx) {
 
   gsl_matrix_float_scale(W, (ctx->currentTime - ctx->prevTime) / 2.f);
 }
-void getQ(EKF_ctx_t *ctx) {
-  gsl_matrix_float *pStdDevMat = gsl_matrix_float_alloc(3, 3);
-  gsl_matrix_float *pBufferMat = gsl_matrix_float_calloc(3, 4);
-  getW(ctx);
-  gsl_matrix_float_set_identity(pStdDevMat);
-  gsl_matrix_float_scale(pStdDevMat, GYRO_STD_DEVIATION);
-  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, pStdDevMat, ctx->wk->W, 0,
-                 pBufferMat);
-  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->wk->W, pBufferMat, 0,
-                 ctx->wk->Q);
 
-  gsl_matrix_float_free(pStdDevMat);
-  gsl_matrix_float_free(pBufferMat);
+// Similarly update getQ, get_h, and getH to use wk->tmpStdDevMat,
+// wk->tmpBufferMat, wk->tmp3x3, and wk->tmp3vec. For example, in getQ:
+void getQ(EKF_ctx_t *ctx) {
+  EKF_work_ctx_t *wk = ctx->wk;
+  getW(ctx);
+  gsl_matrix_float_set_identity(wk->tmpStdDevMat);
+  gsl_matrix_float_scale(wk->tmpStdDevMat, GYRO_STD_DEVIATION);
+  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, wk->tmpStdDevMat, wk->W, 0,
+                 wk->tmpBufferMat);
+  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, wk->W, wk->tmpBufferMat, 0,
+                 wk->Q);
+  // Using preallocated buffers; no new alloc/free.
 }
 
 void ekfCorrect(EKF_ctx_t *ctx) {
   gsl_vector_float *z = ctx->wk->z;
-  gsl_vector_float *v;
+  gsl_vector_float *h = ctx->wk->h;
+
   for (uint8_t i = 0; i < 3; i++) {
     gsl_vector_float_set(z, i, gsl_vector_float_get(ctx->acc, i));
     gsl_vector_float_set(z, i + 3, gsl_vector_float_get(ctx->mag, i));
   }
 
-  gsl_vector_float *h = ctx->wk->h;
   get_h(ctx);
   gsl_vector_float_sub(z, h);
-  v = z;
+
   gsl_matrix_float *K = ctx->wk->K;
   getK(ctx);
 
-  gsl_blas_sgemv(CblasNoTrans, 1, K, v, 0, ctx->q_current);
+  gsl_blas_sgemv(CblasNoTrans, 1, K, z, 0, ctx->q_current);
   gsl_vector_float_add(ctx->q_current, ctx->q_est);
 
   gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, -1, K, ctx->wk->H, 0,

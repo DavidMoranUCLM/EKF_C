@@ -29,13 +29,31 @@ typedef struct EKF_work_ctx_s {
   gsl_vector_float *z;
   gsl_vector_float *h;
 
-  // Buffers temporales
+  // Buffers temporales (existing)
   const gsl_matrix_float *I3;
   const gsl_matrix_float *I4;
   gsl_matrix_float *M1_4_6;
   gsl_matrix_float *M2_4_4;
   gsl_vector_float *v1;
   gsl_vector_float *v2;
+
+  // NEW: Preallocated temporary buffers to avoid alloc/free on every call  
+  gsl_quat_float  *tmpQuat;         // 4-element quaternion buffer  
+  gsl_matrix_float *tmp4x4;          // 4x4 matrix buffer  
+  gsl_matrix_float *tmp3x3;          // 3x3 matrix buffer  
+  gsl_matrix_float *tmpStdDevMat;    // 3x3 temporary for standard deviation  
+  gsl_matrix_float *tmpBufferMat;    // 3x4 temporary buffer  
+  gsl_vector_float *tmp3vec;         // 3-element vector temporary  
+
+  // NEW: Additional preallocated double-precision buffers for QR inversion
+  gsl_matrix      *inv_tmpMatrix_d; // double matrix of size 6x6
+  gsl_vector      *inv_tmpTau_d;    // double vector of size 6
+  gsl_vector      *inv_tmpB_d;      // double vector of size 6
+  gsl_vector      *inv_tmpX_d;      // double vector of size 6
+
+  // NEW: Temporary matrix for the product R * Trans(K)
+  gsl_matrix_float *tmpRTransK;
+
 } EKF_work_ctx_t;
 
 typedef struct EKF_ctx_s {
