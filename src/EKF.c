@@ -76,12 +76,17 @@ void ekfInit(EKF_ctx_t *ctx, const measures_t *measures) {
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
   gsl_vector_float_set(ctx->horizonRefG, 1, 0);
-  gsl_vector_float_set(ctx->horizonRefG, 2, 9.8);
+  gsl_vector_float_set(ctx->horizonRefG, 2, 1);
 
   ctx->horizonRefMag = gsl_vector_float_calloc(3);
-  gsl_vector_float_set(ctx->horizonRefMag, 0, cosf(ctx->latitude));
-  gsl_vector_float_set(ctx->horizonRefMag, 1, 0);
-  gsl_vector_float_set(ctx->horizonRefMag, 2, -sinf(ctx->latitude));
+  gsl_vector_float_set(ctx->horizonRefMag, 0,
+                       cosf(ctx->latitude) * cosf(INCLINATION_RAD));
+  gsl_vector_float_set(ctx->horizonRefMag, 1, -sinf(INCLINATION_RAD));
+  gsl_vector_float_set(ctx->horizonRefMag, 2,
+                       -sinf(ctx->latitude) * cosf(INCLINATION_RAD));
+
+  ctx->currentTime = 0;
+  ctx->prevTime = 0;
 
   for (uint8_t i = 0; i < 3; i++) {
     gsl_vector_float_set(ctx->acc, i, measures->acc[i]);
@@ -214,18 +219,25 @@ void ekfUpdate(EKF_ctx_t *ctx, const measures_t *measures,
   ctx->currentTime = currentTime;
 
   gsl_vector_float_memcpy(ctx->q_prev, ctx->q_current);
-  gsl_vector_float_set_zero(ctx->q_current);
-  gsl_vector_float_set_zero(ctx->q_est);
-
   gsl_matrix_float_memcpy(ctx->P_prev, ctx->P_current);
-  gsl_matrix_float_set_zero(ctx->P_current);
-  gsl_matrix_float_set_zero(ctx->P_est);
 
   for (uint8_t i = 0; i < 3; i++) {
     gsl_vector_float_set(ctx->acc, i, measures->acc[i]);
     gsl_vector_float_set(ctx->mag, i, measures->mag[i]);
     gsl_vector_float_set(ctx->velAng, i, measures->velAng[i]);
   }
+
+  // Normalize acc
+  float accNorm = 0;
+  gsl_blas_sdot(ctx->acc, ctx->acc, &accNorm);
+  accNorm = sqrt(accNorm);
+  gsl_vector_float_scale(ctx->acc, 1 / accNorm);
+
+  // Normalize mag
+  float magNorm = 0;
+  gsl_blas_sdot(ctx->mag, ctx->mag, &magNorm);
+  magNorm = sqrt(magNorm);
+  gsl_vector_float_scale(ctx->mag, 1 / magNorm);
 }
 
 void ekfEstimate(EKF_ctx_t *ctx) {
