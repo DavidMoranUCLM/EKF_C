@@ -649,6 +649,11 @@ void qInitEstimate(EKF_ctx_t *ctx, const measures_t *measures) {
   gsl_vector_float_memcpy(ctx->q_current, q);
   gsl_quat_float_free(q);
 
+  gsl_quat_float_set(ctx->q_current, 0, 1);
+  gsl_quat_float_set(ctx->q_current, 1, 0);
+  gsl_quat_float_set(ctx->q_current, 2, 0);
+  gsl_quat_float_set(ctx->q_current, 3, 0);
+
   gsl_vector_float_free(xAxis);
   gsl_vector_float_free(yAxis);
   gsl_vector_float_free(zAxis);
