@@ -34,6 +34,7 @@ void getQ(EKF_ctx_t *ctx);
 void getW(EKF_ctx_t *ctx);
 
 void ekfCorrect(EKF_ctx_t *ctx);
+void PCorrect(EKF_ctx_t *ctx);
 void get_h(EKF_ctx_t *ctx);
 int getH(EKF_ctx_t *ctx);
 int getR(EKF_ctx_t *ctx);
@@ -333,13 +334,36 @@ void ekfCorrect(EKF_ctx_t *ctx) {
   gsl_blas_sgemv(CblasNoTrans, 1, K, z, 0, ctx->q_current);
   gsl_vector_float_add(ctx->q_current, ctx->q_est);
 
+  PCorrect(ctx);
+}
+
+void PCorrect(EKF_ctx_t *ctx) {
+  gsl_matrix_float *K = ctx->wk->K;
   gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, -1, K, ctx->wk->H, 0,
                  ctx->wk->M2_4_4);
 
   gsl_matrix_float_add(ctx->wk->M2_4_4, ctx->wk->I4);
 
-  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->wk->M2_4_4, ctx->P_est, 0,
-                 ctx->P_current);
+  if (P_CORRECT_METHOD == 0) {
+    gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->wk->M2_4_4, ctx->P_est,
+                   0, ctx->P_current);
+    return;
+  }
+
+  if (P_CORRECT_METHOD == 1) {
+    gsl_matrix_float *tmpRTransK = ctx->wk->tmpRTransK;
+
+    gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, ctx->P_est, ctx->wk->M2_4_4, 0,
+                   ctx->wk->tmp4x4);
+    gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, ctx->wk->M2_4_4,
+                   ctx->wk->tmp4x4, 0, ctx->P_current);
+
+    gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, ctx->wk->R, K, 0, tmpRTransK);
+    gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, K, tmpRTransK, 0,
+                   ctx->wk->M2_4_4);
+    gsl_matrix_float_add(ctx->P_current, ctx->wk->M2_4_4);
+    return;
+  }
 }
 
 void get_h(EKF_ctx_t *ctx) {
