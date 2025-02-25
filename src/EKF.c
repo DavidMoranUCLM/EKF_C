@@ -591,28 +591,30 @@ int getK(EKF_ctx_t *ctx) {
 
 void invertMatrixFloat(EKF_ctx_t *ctx, const gsl_matrix_float *S,
                        gsl_matrix_float *invS) {
-  // K = P*H'*inv(S);
-
-  gsl_matrix *doubleS = ctx->wk->doubleS;
-  for (int i = 0; i < S->size1; i++) {
-    for (int j = 0; j < S->size2; j++) {
-      gsl_matrix_set(doubleS, i, j, gsl_matrix_float_get(S, i, j));
+  int n = S->size1;
+  EKF_work_ctx_t *wk = ctx->wk;
+  // Convert float matrix S into double-precision matrix using preallocated
+  // buffer
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      gsl_matrix_set(wk->inv_tmpMatrix_d, i, j, gsl_matrix_float_get(S, i, j));
     }
   }
-
-  gsl_permutation *p = gsl_permutation_alloc(S->size1);
-  gsl_matrix *doubleInvS = ctx->wk->doubleInvS;
-  gsl_matrix_set_zero(doubleInvS);
-  int signum = 0;
-  gsl_linalg_LU_decomp(doubleS, p, &signum);
-  gsl_linalg_LU_invert(doubleS, p, doubleInvS);
-
-  for (int i = 0; i < invS->size1; i++) {
-    for (int j = 0; j < invS->size2; j++) {
-      gsl_matrix_float_set(invS, i, j, gsl_matrix_get(doubleInvS, i, j));
+  // Perform QR decomposition on the double matrix
+  gsl_linalg_QR_decomp(wk->inv_tmpMatrix_d, wk->inv_tmpTau_d);
+  // Solve for each column of the identity matrix to form the inverse (in
+  // double)
+  for (int i = 0; i < n; i++) {
+    gsl_vector_set_zero(wk->inv_tmpB_d);
+    gsl_vector_set(wk->inv_tmpB_d, i, 1.0);
+    gsl_linalg_QR_solve(wk->inv_tmpMatrix_d, wk->inv_tmpTau_d, wk->inv_tmpB_d,
+                        wk->inv_tmpX_d);
+    // Copy the double solution into the float output matrix
+    for (int j = 0; j < n; j++) {
+      gsl_matrix_float_set(invS, j, i,
+                           (float)gsl_vector_get(wk->inv_tmpX_d, j));
     }
   }
-  gsl_permutation_free(p);
 }
 
 void ekfNorm(EKF_ctx_t *ctx) { gsl_quat_float_normalize(ctx->q_current); }
