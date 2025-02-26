@@ -79,9 +79,9 @@ void ekfInit(EKF_ctx_t *ctx, const measures_t *measures) {
   gsl_vector_float_set(ctx->horizonRefG, 2, 1);
 
   ctx->horizonRefMag = gsl_vector_float_calloc(3);
-  gsl_vector_float_set(ctx->horizonRefMag, 0,
+  gsl_vector_float_set(ctx->horizonRefMag, 0, -sinf(INCLINATION_RAD));
+  gsl_vector_float_set(ctx->horizonRefMag, 1,
                        cosf(ctx->latitude) * cosf(INCLINATION_RAD));
-  gsl_vector_float_set(ctx->horizonRefMag, 1, -sinf(INCLINATION_RAD));
   gsl_vector_float_set(ctx->horizonRefMag, 2,
                        -sinf(ctx->latitude) * cosf(INCLINATION_RAD));
 
