@@ -190,7 +190,7 @@ int gsl_quat_float_fromRotMatrix(gsl_matrix_float *pRotMat,
 
 int gsl_quat_float_toRotMatrix(gsl_quat_float *pQuat,
                                gsl_matrix_float *pRotMat) {
-  if ((pRotMat->size1 != 3) || (pRotMat->size1 != 3)) {
+  if ((pRotMat->size1 != 3) || (pRotMat->size2 != 3)) {
     return -1;
   }
 
