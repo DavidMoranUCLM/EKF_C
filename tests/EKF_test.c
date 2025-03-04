@@ -100,7 +100,7 @@ void setUp(void) {
   measure.velAng[1] = velAng[1];
   measure.velAng[2] = velAng[2];
 
-  ekfInit(&EKF_ctx, &EKF_wk_ctx, &measure);
+  ekfInit(&EKF_ctx, &measure);
 }
 void tearDown(void) { ekfDeinit(&EKF_ctx); }
 
@@ -147,7 +147,7 @@ void testEKFInit(void) {
   measure.velAng[1] = velAng[1];
   measure.velAng[2] = velAng[2];
 
-  ekfInit(&EKF_ctx, &EKF_wk_ctx, &measure);
+  ekfInit(&EKF_ctx, &measure);
   TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, acc, EKF_ctx.acc->data, 3);
   TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, mag, EKF_ctx.mag->data, 3);
   TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, velAng, EKF_ctx.velAng->data, 3);

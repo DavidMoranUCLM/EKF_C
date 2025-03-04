@@ -8,6 +8,7 @@
 
 #define ESTIMATE_ORDER (uint8_t)1
 #define DIFERENTIAL_STEP 1e-3F
+#define P_ESTIMATE_SCALE 1.F
 
 #define LATITUDE_DEG 50.F
 #define INCLINATION_DEG 6.F
