@@ -77,12 +77,14 @@ void ekfInit(EKF_ctx_t *ctx, const measures_t *measures) {
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
   gsl_vector_float_set(ctx->horizonRefG, 1, 0);
   gsl_vector_float_set(ctx->horizonRefG, 2, 1);
+  gsl_vector_float_scale(ctx->horizonRefG, ACC_SCALE);
 
   ctx->horizonRefMag = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefMag, 0, -sinf(INCLINATION_RAD));
   gsl_vector_float_set(ctx->horizonRefMag, 1,
                        cosf(ctx->latitude) * cosf(INCLINATION_RAD));
   gsl_vector_float_set(ctx->horizonRefMag, 2,
+  gsl_vector_float_scale(ctx->horizonRefMag, MAG_SCALE);
                        -sinf(ctx->latitude) * cosf(INCLINATION_RAD));
 
   ctx->currentTime = 0;
@@ -231,13 +233,13 @@ void ekfUpdate(EKF_ctx_t *ctx, const measures_t *measures,
   float accNorm = 0;
   gsl_blas_sdot(ctx->acc, ctx->acc, &accNorm);
   accNorm = sqrt(accNorm);
-  gsl_vector_float_scale(ctx->acc, 1 / accNorm);
+  gsl_vector_float_scale(ctx->acc, ACC_SCALE / accNorm);
 
   // Normalize mag
   float magNorm = 0;
   gsl_blas_sdot(ctx->mag, ctx->mag, &magNorm);
   magNorm = sqrt(magNorm);
-  gsl_vector_float_scale(ctx->mag, 1 / magNorm);
+  gsl_vector_float_scale(ctx->mag, MAG_SCALE / magNorm);
 }
 
 void ekfEstimate(EKF_ctx_t *ctx) {
@@ -276,6 +278,7 @@ void PEst(EKF_ctx_t *ctx) {
 
   gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1, ctx->P_prev, F, 0, M2_4_4);
   gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, F, M2_4_4, 0, ctx->P_est);
+  gsl_matrix_float_scale(ctx->P_est, P_ESTIMATE_SCALE);
 
   gsl_matrix_float_add(ctx->P_est, Q);
 }

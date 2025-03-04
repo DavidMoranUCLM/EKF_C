@@ -14,9 +14,12 @@
 #define LATITUDE_RAD ((LATITUDE_DEG*3.1415f/180.f)) 
 #define INCLINATION_RAD ((INCLINATION_DEG*3.1415f/180.f))
 
+#define MAG_SCALE 1.F
+#define ACC_SCALE 1.F
+
 //0: Standard
 //1: Joseph
-#define P_CORRECT_METHOD 1
+#define P_CORRECT_METHOD 0
 
 /*
 #include <inttypes.h>
