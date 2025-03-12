@@ -188,8 +188,7 @@ int gsl_quat_float_fromRotMatrix(gsl_matrix_float *pRotMat,
   return 0;
 }
 
-int gsl_quat_float_toRotMatrix(gsl_quat_float *pQuat,
-                               gsl_matrix_float *pRotMat) {
+int gsl_quat_float_toRotMatrix(gsl_quat_float *pQuat, gsl_matrix_float *pRotMat) {
   if ((pRotMat->size1 != 3) || (pRotMat->size2 != 3)) {
     return -1;
   }
@@ -202,24 +201,15 @@ int gsl_quat_float_toRotMatrix(gsl_quat_float *pQuat,
   q_y = gsl_quat_float_get(pQuat, 2);
   q_z = gsl_quat_float_get(pQuat, 3);
 
-  gsl_matrix_float_set(pRotMat, 0, 1, q_x * q_y - q_z * q_w);
-  gsl_matrix_float_set(pRotMat, 0, 2, q_x * q_z + q_y * q_w);
-  gsl_matrix_float_set(pRotMat, 1, 2, q_y * q_z - q_x * q_w);
-  gsl_matrix_float_scale(pRotMat, 2);
-
-  gsl_matrix_float *pTrans = gsl_matrix_float_alloc(3, 3);
-  gsl_matrix_float_transpose_memcpy(pTrans, pRotMat);
-  gsl_matrix_float_scale(pTrans, -1.f);
-
-  gsl_matrix_float_add(pRotMat, pTrans);
-  gsl_matrix_float_set(pRotMat, 0, 0,
-                       q_w * q_w + q_x * q_x - q_y * q_y - q_z * q_z);
-  gsl_matrix_float_set(pRotMat, 1, 1,
-                       q_w * q_w - q_x * q_x + q_y * q_y - q_z * q_z);
-  gsl_matrix_float_set(pRotMat, 2, 2,
-                       q_w * q_w - q_x * q_x - q_y * q_y + q_z * q_z);
-
-  gsl_matrix_float_free(pTrans);
+  gsl_matrix_float_set(pRotMat, 0, 0, q_w * q_w + q_x * q_x - q_y * q_y - q_z * q_z);
+  gsl_matrix_float_set(pRotMat, 0, 1, 2 * (q_x * q_y - q_z * q_w));
+  gsl_matrix_float_set(pRotMat, 0, 2, 2 * (q_x * q_z + q_y * q_w));
+  gsl_matrix_float_set(pRotMat, 1, 0, 2 * (q_x * q_y + q_z * q_w));
+  gsl_matrix_float_set(pRotMat, 1, 1, q_w * q_w - q_x * q_x + q_y * q_y - q_z * q_z);
+  gsl_matrix_float_set(pRotMat, 1, 2, 2 * (q_y * q_z - q_x * q_w));
+  gsl_matrix_float_set(pRotMat, 2, 0, 2 * (q_x * q_z - q_y * q_w));
+  gsl_matrix_float_set(pRotMat, 2, 1, 2 * (q_y * q_z + q_x * q_w));
+  gsl_matrix_float_set(pRotMat, 2, 2, q_w * q_w + q_z * q_z - q_x * q_x - q_y * q_y);
 
   return 0;
 }
