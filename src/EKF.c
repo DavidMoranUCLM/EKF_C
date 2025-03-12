@@ -80,12 +80,12 @@ void ekfInit(EKF_ctx_t *ctx, const measures_t *measures) {
   gsl_vector_float_scale(ctx->horizonRefG, ACC_SCALE);
 
   ctx->horizonRefMag = gsl_vector_float_calloc(3);
-  gsl_vector_float_set(ctx->horizonRefMag, 0, -sinf(INCLINATION_RAD));
+  gsl_vector_float_set(ctx->horizonRefMag, 0, sinf(INCLINATION_RAD));
   gsl_vector_float_set(ctx->horizonRefMag, 1,
                        cosf(ctx->latitude) * cosf(INCLINATION_RAD));
   gsl_vector_float_set(ctx->horizonRefMag, 2,
-  gsl_vector_float_scale(ctx->horizonRefMag, MAG_SCALE);
                        -sinf(ctx->latitude) * cosf(INCLINATION_RAD));
+  gsl_vector_float_scale(ctx->horizonRefMag, MAG_SCALE);
 
   ctx->currentTime = 0;
   ctx->prevTime = 0;
