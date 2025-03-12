@@ -118,20 +118,23 @@ int gsl_quat_float_fromAxis(gsl_vector_float *pAxis, const float angleRad,
     return -1;
   }
 
-  if (gsl_quat_float_norm(pAxis) < QUAT_MINIMUM_AXIS_NORM) {
-    return -1;
-  }
-
   if (pQ == NULL) {
     return -1;
   }
 
+  float norm = 0;
+  for (int i = 0; i < 3; i++) {
+    norm += pAxis->data[i] * pAxis->data[i];
+  }
+
+  norm /= sqrtf(norm);
+
   float sinHalfAngle = sinf(angleRad / 2);
 
   pQ->data[0] = cosf(angleRad / 2);
-  pQ->data[1] = pAxis->data[0] * sinHalfAngle;
-  pQ->data[2] = pAxis->data[1] * sinHalfAngle;
-  pQ->data[3] = pAxis->data[2] * sinHalfAngle;
+  pQ->data[1] = pAxis->data[0] * sinHalfAngle / norm;
+  pQ->data[2] = pAxis->data[1] * sinHalfAngle / norm;
+  pQ->data[3] = pAxis->data[2] * sinHalfAngle / norm;
 
   gsl_quat_float_normalize(pQ);
   return 0;
@@ -199,24 +202,15 @@ int gsl_quat_float_toRotMatrix(gsl_quat_float *pQuat,
   q_y = gsl_quat_float_get(pQuat, 2);
   q_z = gsl_quat_float_get(pQuat, 3);
 
-  gsl_matrix_float_set(pRotMat, 0, 1, q_x * q_y - q_z * q_w);
-  gsl_matrix_float_set(pRotMat, 0, 2, q_x * q_z + q_y * q_w);
-  gsl_matrix_float_set(pRotMat, 1, 2, q_y * q_z - q_x * q_w);
-  gsl_matrix_float_scale(pRotMat, 2);
-
-  gsl_matrix_float *pTrans = gsl_matrix_float_alloc(3, 3);
-  gsl_matrix_float_transpose_memcpy(pTrans, pRotMat);
-  gsl_matrix_float_scale(pTrans, -1.f);
-
-  gsl_matrix_float_add(pRotMat, pTrans);
-  gsl_matrix_float_set(pRotMat, 0, 0,
-                       q_w * q_w + q_x * q_x - q_y * q_y - q_z * q_z);
-  gsl_matrix_float_set(pRotMat, 1, 1,
-                       q_w * q_w - q_x * q_x + q_y * q_y - q_z * q_z);
-  gsl_matrix_float_set(pRotMat, 2, 2,
-                       q_w * q_w - q_x * q_x - q_y * q_y + q_z * q_z);
-
-  gsl_matrix_float_free(pTrans);
+  gsl_matrix_float_set(pRotMat, 0, 0, q_w * q_w + q_x * q_x - q_y * q_y - q_z * q_z);
+  gsl_matrix_float_set(pRotMat, 0, 1, 2 * (q_x * q_y - q_z * q_w));
+  gsl_matrix_float_set(pRotMat, 0, 2, 2 * (q_x * q_z + q_y * q_w));
+  gsl_matrix_float_set(pRotMat, 1, 0, 2 * (q_x * q_y + q_z * q_w));
+  gsl_matrix_float_set(pRotMat, 1, 1, q_w * q_w - q_x * q_x + q_y * q_y - q_z * q_z);
+  gsl_matrix_float_set(pRotMat, 1, 2, 2 * (q_y * q_z - q_x * q_w));
+  gsl_matrix_float_set(pRotMat, 2, 0, 2 * (q_x * q_z - q_y * q_w));
+  gsl_matrix_float_set(pRotMat, 2, 1, 2 * (q_y * q_z + q_x * q_w));
+  gsl_matrix_float_set(pRotMat, 2, 2, q_w * q_w + q_z * q_z - q_x * q_x - q_y * q_y);
 
   return 0;
 }
@@ -225,7 +219,7 @@ void gsl_quat_float_toMatrix(gsl_quat_float *pQuat,
                              gsl_matrix_float *pQuatMat) {
   gsl_matrix_float_set_zero(pQuatMat);
   gsl_matrix_float *pMatrixT =
-      gsl_matrix_float_calloc(QUAT_MATRIX_SIZE, QUAT_MATRIX_SIZE);
+      gsl_matrix_float_calloc(pQuatMat->size1, pQuatMat->size2);
 
   gsl_matrix_float_set(pQuatMat, 0, 1, -gsl_quat_float_get(pQuat, 1));
   gsl_matrix_float_set(pQuatMat, 0, 2, -gsl_quat_float_get(pQuat, 2));

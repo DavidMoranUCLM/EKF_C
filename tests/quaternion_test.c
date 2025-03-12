@@ -240,6 +240,68 @@ void testQuatToMatrix(void){
   }
 }
 
+void testQuatToRotMatrix(void) {
+  // Create a quaternion for 90° rotation about Z axis: [cos(pi/4), 0, 0, sin(pi/4)]
+  gsl_quat_float* q = gsl_quat_float_alloc();
+  q->data[0] = 0.70710678f; // cos(pi/4)
+  q->data[1] = 0.0f;
+  q->data[2] = 0.0f;
+  q->data[3] = 0.70710678f; // sin(pi/4)
+
+  // Allocate a 3x3 rotation matrix
+  gsl_matrix_float* rotMat = gsl_matrix_float_alloc(3, 3);
+  TEST_ASSERT(gsl_quat_float_toRotMatrix(q, rotMat) == 0);
+
+  // Expected rotation matrix for 90° about Z:
+  // [ 0, -1, 0 ]
+  // [ 1,  0, 0 ]
+  // [ 0,  0, 1 ]
+  float expected[9] = {
+      0.f, -1.f, 0.f,
+      1.f,  0.f, 0.f,
+      0.f,  0.f, 1.f
+  };
+
+  for (size_t i = 0; i < 3; i++) {
+    for (size_t j = 0; j < 3; j++) {
+      float val = gsl_matrix_float_get(rotMat, i, j);
+      TEST_ASSERT_FLOAT_WITHIN(FLOAT_ERROR, expected[i * 3 + j], val);
+    }
+  }
+
+  gsl_matrix_float_free(rotMat);
+  gsl_quat_float_free(q);
+}
+
+void testQuatToRotMatrixIdentity(void) {
+  // Expected identity matrix 3x3
+  float identity[9] = {
+    1.f, 0.f, 0.f,
+    0.f, 1.f, 0.f,
+    0.f, 0.f, 1.f
+  };
+
+  for (int sign = 1; sign >= -1; sign -= 2) {
+    gsl_quat_float* q = gsl_quat_float_alloc();
+    q->data[0] = (float)sign;  // +1 or -1
+    q->data[1] = 0.f;
+    q->data[2] = 0.f;
+    q->data[3] = 0.f;
+
+    gsl_matrix_float* rotMat = gsl_matrix_float_alloc(3, 3);
+    TEST_ASSERT(gsl_quat_float_toRotMatrix(q, rotMat) == 0);
+
+    for (size_t i = 0; i < 3; i++) {
+      for (size_t j = 0; j < 3; j++) {
+        float val = gsl_matrix_float_get(rotMat, i, j);
+        TEST_ASSERT_FLOAT_WITHIN(FLOAT_ERROR, identity[i * 3 + j], val);
+      }
+    }
+    gsl_matrix_float_free(rotMat);
+    gsl_quat_float_free(q);
+  }
+}
+
 int main(void) {
   UNITY_BEGIN();
   RUN_TEST(testQuatAlloc);
@@ -253,5 +315,7 @@ int main(void) {
   RUN_TEST(testQuatFromAxis);
   RUN_TEST(testQuatFromVector);
   RUN_TEST(testQuatToMatrix);
+  RUN_TEST(testQuatToRotMatrix);
+  RUN_TEST(testQuatToRotMatrixIdentity);
   return UNITY_END();
 }
