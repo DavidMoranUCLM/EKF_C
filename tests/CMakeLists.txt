@@ -19,3 +19,9 @@ target_include_directories(TEST_EKF PUBLIC ../include ../unity/src)
 target_link_libraries(TEST_EKF unity GLS_QUATERNION EKF ROTATIONS)
 
 add_test(EKF_test TEST_EKF)
+
+add_executable(TEST_EKF_PRIM EKF_test_primitives.c)
+target_include_directories(TEST_EKF_PRIM PUBLIC ../include ../unity/src)
+target_link_libraries(TEST_EKF_PRIM unity GLS_QUATERNION EKF ROTATIONS)
+
+add_test(EKF_test_prim TEST_EKF_PRIM)

@@ -20,7 +20,7 @@
 
 //0: Standard
 //1: Joseph
-#define P_CORRECT_METHOD 0
+#define P_CORRECT_METHOD 1
 
 /*
 #include <inttypes.h>
