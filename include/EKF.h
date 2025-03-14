@@ -86,7 +86,6 @@ typedef struct EKF_ctx_s {
  * @param measures
  */
 void ekfInit(EKF_ctx_t *ctx, const measures_t *measures);
-void ekfInit(EKF_ctx_t *ctx, const measures_t *measures);
 
 /**
  * @brief Deinitializes a EKF_ctx_t pointer, freeing memory;

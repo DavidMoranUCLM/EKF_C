@@ -33,12 +33,12 @@ void getF(EKF_ctx_t* ctx);
 void getQ(EKF_ctx_t* ctx);
 void getW(EKF_ctx_t* ctx);
 
-void ekfCorrect(EKF_ctx_t *ctx);
-void get_h(EKF_ctx_t *ctx);
-int getH(EKF_ctx_t *ctx);
-int getR(EKF_ctx_t *ctx);
-int getS(EKF_ctx_t *ctx);
-int getK(EKF_ctx_t *ctx);
+void ekfCorrect(EKF_ctx_t* ctx);
+void get_h(EKF_ctx_t* ctx);
+int getH(EKF_ctx_t* ctx);
+int getR(EKF_ctx_t* ctx);
+int getS(EKF_ctx_t* ctx);
+int getK(EKF_ctx_t* ctx);
 
 void qEstPrimitive(const gsl_vector_float* velAng, float deltaT,
                    const gsl_quat_float* qPrev, gsl_quat_float* qEst,
@@ -88,9 +88,11 @@ void PInitEstimate(EKF_ctx_t* ctx);
 /**
  * Public Functions Definitions
  */
-void ekfInit(EKF_ctx_t *ctx, EKF_work_ctx_t *wk_ctx,
-             const measures_t *measures) {
-  ctx->wk = wk_ctx;
+void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
+  if (!ctx->wk) {
+    ctx->wk = malloc(sizeof(EKF_work_ctx_t));
+  }
+  initWorkSpace(ctx);
   ctx->q_current = gsl_quat_float_calloc();
   ctx->q_est = gsl_quat_float_calloc();
   ctx->q_prev = gsl_quat_float_calloc();
@@ -108,8 +110,6 @@ void ekfInit(EKF_ctx_t *ctx, EKF_work_ctx_t *wk_ctx,
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
   gsl_vector_float_set(ctx->horizonRefG, 1, 0);
-  gsl_vector_float_set(ctx->horizonRefG, 2, 1);
-  gsl_vector_float_scale(ctx->horizonRefG, ACC_SCALE);
   gsl_vector_float_set(ctx->horizonRefG, 2, 1);
   gsl_vector_float_scale(ctx->horizonRefG, ACC_SCALE);
 
@@ -353,6 +353,13 @@ void getQ(EKF_ctx_t* ctx) {
   // gsl_matrix_float_free(pBufferMat);
 }
 
+void PCorrect(EKF_ctx_t* ctx) {
+  EKF_work_ctx_t* wk = ctx->wk;
+  PCorrectPrimitive(ctx->P_est, wk->K, wk->H, wk->R, ctx->P_current, wk->tmp4x4,
+                    wk->tmpRTransK, wk->I4);
+}
+
+
 void ekfCorrect(EKF_ctx_t* ctx) {
   EKF_work_ctx_t* wk = ctx->wk;
   gsl_vector_float* z = wk->z;
@@ -369,12 +376,6 @@ void ekfCorrect(EKF_ctx_t* ctx) {
   qCorrectPrimitive(ctx->q_est, wk->K, z, ctx->q_current, wk->tmpQuat);
 
   PCorrect(ctx);
-}
-
-void PCorrect(EKF_ctx_t* ctx) {
-  EKF_work_ctx_t* wk = ctx->wk;
-  PCorrectPrimitive(ctx->P_est, wk->K, wk->H, wk->R, ctx->P_current, wk->tmp4x4,
-                    wk->tmpRTransK, wk->I4);
 }
 
 void get_h(EKF_ctx_t* ctx) {
@@ -606,7 +607,6 @@ void getKPrimitive(const gsl_matrix_float* P, const gsl_matrix_float* H,
   gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1, P, tmp4x6, 0,
                  K);  // K = P * tmp4x6
 }
-
 
 void getHPrimitive(const gsl_quat_float* q, const gsl_vector_float* acc,
                    const gsl_vector_float* mag, gsl_matrix_float* H,
