@@ -163,7 +163,7 @@ void test_PEstPrimitive(void) {
     gsl_vector_float *g = read_vector(M3_FILE, 3, i);
     gsl_vector_float *h = gsl_vector_float_calloc(6);
 
-    get_hPrimitive(q, g, r, h);
+    get_hPrimitive(q, g, h);
 
     write_vector_to_file(h_OUT_FILE_BASE, i, h);
 
@@ -254,7 +254,7 @@ void test_getHPrimitive(void) {
     gsl_vector_float *pV1 = gsl_vector_float_alloc(3);
     gsl_vector_float *pV2 = gsl_vector_float_alloc(3);
 
-    getHPrimitive(q, acc, mag, H, pQv, pM2, pV1, pV2);
+    getHPrimitive(q, acc, H, pQv, pM2, pV1, pV2);
 
     write_matrix_to_file(H_OUT_FILE_BASE, i, H);
 
