@@ -8,7 +8,6 @@
 
 typedef struct measures_s {
   float acc[3];
-  float mag[3];
   float velAng[3];
 } measures_t;
 
@@ -32,7 +31,7 @@ typedef struct EKF_work_ctx_s {
   // Buffers temporales (existing)
   const gsl_matrix_float *I3;
   const gsl_matrix_float *I4;
-  gsl_matrix_float *M1_4_6;
+  gsl_matrix_float *M1_4_3;
   gsl_matrix_float *M2_4_4;
   gsl_vector_float *v1;
   gsl_vector_float *v2;
@@ -67,12 +66,9 @@ typedef struct EKF_ctx_s {
   gsl_matrix_float *P_est;
 
   gsl_vector_float *acc;
-  gsl_vector_float *mag;
   gsl_vector_float *velAng;
 
   gsl_vector_float *horizonRefG;
-  gsl_vector_float *horizonRefMag;
-  float latitude;
 
   float currentTime;
   float prevTime;
@@ -139,26 +135,24 @@ void PEstPrimitive(const gsl_matrix_float *PPrev, const gsl_matrix_float *F,
 void PCorrectPrimitive(const gsl_matrix_float *P, const gsl_matrix_float *K,
                        const gsl_matrix_float *H, const gsl_matrix_float *R,
                        gsl_matrix_float *PCorrect, gsl_matrix_float *tmp4x4,
-                       gsl_matrix_float *tmp6x4, gsl_matrix_float *I4);
+                       gsl_matrix_float *tmp3x4, gsl_matrix_float *I4);
 void qCorrectPrimitive(const gsl_quat_float *q, const gsl_matrix_float *K,
                        const gsl_vector_float *h, gsl_quat_float *qCorrect,
                        gsl_vector_float *tmp);
 void getKPrimitive(const gsl_matrix_float *P, const gsl_matrix_float *H,
                    const gsl_matrix_float *invS, gsl_matrix_float *K,
-                   gsl_matrix_float *tmp4x6);
+                   gsl_matrix_float *tmp4x3);
 void getHPrimitive(const gsl_quat_float *q, const gsl_vector_float *acc,
-                   const gsl_vector_float *mag, gsl_matrix_float *H,
-                   gsl_vector_float *pQv, gsl_matrix_float *pM2,
-                   gsl_vector_float *pV1, gsl_vector_float *pV2);
+                   gsl_matrix_float *H, gsl_vector_float *pQv,
+                   gsl_matrix_float *pM2, gsl_vector_float *pV1, gsl_vector_float *pV2);
 void getRPrimitive(gsl_matrix_float *R);
 void getSPrimitive(const gsl_matrix_float *H, const gsl_matrix_float *P,
                    const gsl_matrix_float *R, gsl_matrix_float *S,
-                   gsl_matrix_float *tmp4x6);
+                   gsl_matrix_float *tmp4x3);
 void invertMatrixFloatPrimitive(const gsl_matrix *S, gsl_matrix *invS,
                                 gsl_vector *tau, gsl_vector *b, gsl_vector *x);
 void get_hPrimitive(const gsl_quat_float *q_est,
-                    const gsl_vector_float *horizonRefG,
-                    const gsl_vector_float *horizonRefMag, gsl_vector_float *h);                                
+                    const gsl_vector_float *horizonRefG, gsl_vector_float *h);
 #endif
 
 #endif
