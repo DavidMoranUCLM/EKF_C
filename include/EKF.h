@@ -8,6 +8,7 @@
 
 typedef struct measures_s {
   float acc[3];
+  float mag[3];
   float velAng[3];
 } measures_t;
 
@@ -72,6 +73,10 @@ typedef struct EKF_ctx_s {
 
   float currentTime;
   float prevTime;
+  float lastMagCorection;
+
+  int (*getSemaphore)(void* sem);
+  int (*releaseSemaphore)(void* sem);
 
 } EKF_ctx_t;
 
@@ -99,6 +104,7 @@ void ekfDeinit(EKF_ctx_t *ctx);
  */
 void ekfStep(EKF_ctx_t *ctx, const measures_t *measures,
              const float currentTime);
+
 
 #ifdef TEST_ENABLE
 

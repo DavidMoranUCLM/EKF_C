@@ -157,6 +157,28 @@ int gsl_quat_float_fromVector(gsl_vector_float *pVector, gsl_quat_float *pQ) {
   return 0;
 }
 
+
+int gsl_quat_float_fromEuler(float roll, float pitch, float yaw, gsl_quat_float *pQ){
+  if (pQ == NULL) {
+    return -1;
+  }
+
+  float cy = cosf(yaw * 0.5f);
+  float sy = sinf(yaw * 0.5f);
+  float cp = cosf(pitch * 0.5f);
+  float sp = sinf(pitch * 0.5f);
+  float cr = cosf(roll * 0.5f);
+  float sr = sinf(roll * 0.5f);
+
+  pQ->data[0] = cr * cp * cy + sr * sp * sy;
+  pQ->data[1] = sr * cp * cy - cr * sp * sy;
+  pQ->data[2] = cr * sp * cy + sr * cp * sy;
+  pQ->data[3] = cr * cp * sy - sr * sp * cy;
+
+  return 0;
+}
+
+
 int gsl_quat_float_fromRotMatrix(gsl_matrix_float *pRotMat,
                                  gsl_quat_float *pQ) {
   if (pRotMat->size1 != ROT_MAT_SIZE || pRotMat->size2 != ROT_MAT_SIZE) {

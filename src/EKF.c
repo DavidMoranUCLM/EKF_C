@@ -40,6 +40,8 @@ int getR(EKF_ctx_t* ctx);
 int getS(EKF_ctx_t* ctx);
 int getK(EKF_ctx_t* ctx);
 
+int applyMagYawCorrection(const gsl_quat_float *q, const float mag[3]);
+
 void qEstPrimitive(const gsl_vector_float* velAng, float deltaT,
                    const gsl_quat_float* qPrev, gsl_quat_float* qEst,
                    gsl_quat_float* tmpQuat, gsl_matrix_float* qVelAngMat,
@@ -109,6 +111,7 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
 
   ctx->currentTime = 0;
   ctx->prevTime = 0;
+  ctx->lastMagCorection = 0;
 
   for (uint8_t i = 0; i < 3; i++) {
     gsl_vector_float_set(ctx->acc, i, measures->acc[i]);
@@ -267,6 +270,13 @@ void ekfUpdate(EKF_ctx_t* ctx, const measures_t* measures,
   gsl_blas_sdot(ctx->acc, ctx->acc, &accNorm);
   accNorm = sqrtf(accNorm);
   gsl_vector_float_scale(ctx->acc, ACC_SCALE / accNorm);
+
+  if (currentTime - ctx->lastMagCorection > MAG_YAW_CORRECTION_PERIOD_S) {
+    applyMagYawCorrection(ctx->q_current, measures->mag);
+    ctx->lastMagCorection = currentTime;
+  }
+
+
 }
 
 void ekfEstimate(EKF_ctx_t* ctx) {
@@ -444,7 +454,9 @@ void PInitEstimate(EKF_ctx_t* ctx) {
   gsl_matrix_float_set_identity(ctx->P_current);
 }
 
-// ...existing code...
+//
+// Primitives //
+//
 
 void qEstPrimitive(const gsl_vector_float* velAng, float deltaT,
                    const gsl_quat_float* qPrev, gsl_quat_float* qEst,
@@ -620,4 +632,28 @@ void get_hPrimitive(const gsl_quat_float* q_est,
 
   gsl_matrix_float_free(pRotMat);
 }
-// ...existing code...
+
+int applyMagYawCorrection(const gsl_quat_float *q, const float mag[3]) {
+  float qw = gsl_quat_float_get(q, 0);
+  float qx = gsl_quat_float_get(q, 1);
+  float qy = gsl_quat_float_get(q, 2);
+  float qz = gsl_quat_float_get(q, 3);
+
+  float pitch = asinf(2 * (qw * qy - qx * qz));
+  float roll = atan2f(2 * (qw * qx + qy * qz), 1 - 2 * (qx * qx + qy * qy));
+
+  float correctedMag[3];
+  float cr = cosf(roll);
+  float sr = sinf(roll);
+  float cp = cosf(pitch);
+  float sp = sinf(pitch);
+  correctedMag[0] = mag[0] * cr - mag[2] * sr;
+  correctedMag[1] = mag[1] * cp + mag[0] * sp * sr + mag[2] * sp * cr;
+  
+
+  float correctedYaw = atan2f(correctedMag[1], correctedMag[0]);
+
+  gsl_quat_float_fromEuler(roll, pitch, correctedYaw, q);
+
+  return 0;
+}
