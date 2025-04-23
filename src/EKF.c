@@ -1,5 +1,5 @@
 #include "EKF.h"
-
+#include "mag_correction.h"
 #include "EKF_const.h"
 #include "gsl/gsl_blas.h"
 #include "gsl/gsl_linalg.h"
@@ -103,6 +103,12 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
 
   ctx->acc = gsl_vector_float_calloc(3);
   ctx->velAng = gsl_vector_float_calloc(3);
+  ctx->mag = gsl_vector_float_calloc(3);
+
+  ctx->magStdDev = gsl_vector_float_alloc(3);
+  gsl_vector_float_set_all(ctx->magStdDev, MAG_STD_DEVIATION);
+
+  ctx->magCorrectionPeriod_s = 1.0f;
 
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
@@ -131,6 +137,9 @@ void ekfDeinit(EKF_ctx_t* ctx) {
 
   gsl_vector_float_free(ctx->acc);
   gsl_vector_float_free(ctx->velAng);
+  gsl_vector_float_free(ctx->mag);
+
+  gsl_vector_float_free(ctx->magStdDev);
 
   gsl_vector_float_free(ctx->horizonRefG);
 
@@ -246,6 +255,7 @@ void ekfUpdate(EKF_ctx_t* ctx, const measures_t* measures,
   for (uint8_t i = 0; i < 3; i++) {
     gsl_vector_float_set(ctx->acc, i, measures->acc[i]);
     gsl_vector_float_set(ctx->velAng, i, measures->velAng[i]);
+    gsl_vector_float_set(ctx->mag, i, measures->velAng[i]);
   }
 
   // Normalize acc
@@ -253,6 +263,12 @@ void ekfUpdate(EKF_ctx_t* ctx, const measures_t* measures,
   gsl_blas_sdot(ctx->acc, ctx->acc, &accNorm);
   accNorm = sqrtf(accNorm);
   gsl_vector_float_scale(ctx->acc, ACC_SCALE / accNorm);
+
+  // Normalize mag
+  float magNorm = 0;
+  gsl_blas_sdot(ctx->mag, ctx->mag, &magNorm);
+  magNorm = sqrtf(magNorm);
+  gsl_vector_float_scale(ctx->mag, MAG_SCALE / magNorm);
 }
 
 void ekfEstimate(EKF_ctx_t* ctx) {
@@ -310,8 +326,14 @@ void ekfCorrect(EKF_ctx_t* ctx) {
   getK(ctx);
   // Replace the in‐line update by a call to the primitive.
   qCorrectPrimitive(ctx->q_est, wk->K, z, ctx->q_current, wk->tmpQuat);
-
   PCorrect(ctx);
+
+  if (ctx->currentTime - ctx->lastMagCorrectionTime_s > ctx->magCorrectionPeriod_s) {
+    ctx->lastMagCorrectionTime_s = ctx->currentTime;
+    correctMag(ctx->P_current, ctx->q_current, ctx->mag, ctx->magStdDev);
+  }
+  
+
 }
 
 void PCorrect(EKF_ctx_t* ctx) {
@@ -607,4 +629,3 @@ void get_hPrimitive(const gsl_quat_float* q_est,
 
   gsl_matrix_float_free(pRotMat);
 }
-// ...existing code...

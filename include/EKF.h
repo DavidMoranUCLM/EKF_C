@@ -67,9 +67,14 @@ typedef struct EKF_ctx_s {
 
   gsl_vector_float *acc;
   gsl_vector_float *velAng;
+  gsl_vector_float *mag;
+
+  gsl_vector_float *magStdDev;
 
   gsl_vector_float *horizonRefG;
 
+  float lastMagCorrectionTime_s;
+  float magCorrectionPeriod_s;
   float currentTime;
   float prevTime;
 
