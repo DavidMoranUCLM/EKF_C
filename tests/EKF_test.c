@@ -417,6 +417,7 @@ void logMatrixCSV_deinit(csvLog_t *csv) {
     default:
       break;
   }
+  fclose(file);
   free(buffer);
 }
 
@@ -433,7 +434,7 @@ void loadData(float **pAcc, float **pMag, float **pVelAng, float **time,
               uint32_t *size) {
   FILE *file = fopen(
       "/media/david/data/Users/deivi/Documents/Asignaturas/TFG/AHRS/partitions/"
-      "storage/storage_20250305_190557.bin",
+      "storage/storage_20250317_125311.bin",
       "rb");
 
   fread(size, sizeof(size_t), 1, file);
@@ -464,4 +465,6 @@ void loadData(float **pAcc, float **pMag, float **pVelAng, float **time,
     fread(*pVelAng + row * 3, sizeof(float), 3, file);
     fread(*pMag + row * 3, sizeof(float), 3, file);
   }
+
+  fclose(file);
 }

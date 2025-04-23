@@ -4,6 +4,7 @@
 
 #define ACC_STD_DEVIATION (0.15*0.15)
 #define GYRO_STD_DEVIATION (0.1*0.1)
+#define MAG_STD_DEVIATION (0.01*0.01)
 
 #define P_SIZE 4
 
@@ -13,6 +14,7 @@
 
 
 #define ACC_SCALE 1.F
+#define MAG_SCALE 1.F
 
 //0: Standard
 //1: Joseph
