@@ -153,7 +153,8 @@ int8_t normal_dist_intersection(const gsl_vector_float *v1,
 
   gsl_matrix *P1_inv_d = gsl_matrix_alloc(4, 4);
   gsl_matrix *P2_inv_d = gsl_matrix_alloc(4, 4);
-  gsl_matrix *P3_inv_d = gsl_matrix_alloc(4, 4);
+  gsl_matrix *P3_inv_d = gsl_matrix_calloc(4, 4);
+  gsl_matrix *H_d = gsl_matrix_calloc(4, 4);
 
   gsl_vector *v1_d = gsl_vector_alloc(4);
   gsl_vector *v2_d = gsl_vector_alloc(4);
@@ -174,24 +175,24 @@ int8_t normal_dist_intersection(const gsl_vector_float *v1,
   gsl_blas_dsymv(CblasUpper, 1.0, P1_inv_d, v1_d, 0.0, y_d);
   gsl_blas_dsymv(CblasUpper, 1.0, P2_inv_d, v2_d, 1, y_d);
   //H = P1_inv_d + P2_inv_d
-  gsl_matrix_memcpy(P3_inv_d, P1_inv_d);
-  gsl_matrix_add(P3_inv_d, P2_inv_d);
+  gsl_matrix_memcpy(H_d, P1_inv_d);
+  gsl_matrix_add(H_d, P2_inv_d);
 
   //P3_d = P3_inv_d^-1
-  gsl_matrix_memcpy(P1_inv_d, P3_inv_d);
+  gsl_matrix_memcpy(P1_inv_d, H_d);
   gsl_error_handler_t *err_hand =  gsl_set_error_handler_off();
-  int gsl_status = gsl_linalg_cholesky_decomp1(P3_inv_d);
+  int gsl_status = gsl_linalg_cholesky_decomp1(H_d);
   gsl_set_error_handler(err_hand);
 
   if (gsl_status==GSL_SUCCESS) {
-    gsl_linalg_cholesky_invert(P3_inv_d);
+    gsl_linalg_cholesky_invert(H_d);
   } else {
-    gsl_double_pinv(P1_inv_d, 1e-10, P3_inv_d);
+    gsl_double_pinv(P1_inv_d, 1e-10, H_d);
   }
-  gsl_matrix_double2float(P3_inv_d, P3);
+  gsl_matrix_double2float(H_d, P3);
   
   //v3_d = P3_inv_d * y_d
-  gsl_blas_dsymv(CblasUpper, 1.0, P3_inv_d, y_d, 0.0, v3_d);
+  gsl_blas_dsymv(CblasUpper, 1.0, H_d, y_d, 0.0, v3_d);
   gsl_vector_double2float(v3_d, v3);
   
   gsl_matrix_free(P1_d);

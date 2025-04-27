@@ -160,6 +160,43 @@ void test_mag_correct_timing(void) {
   gsl_matrix_float_free(A);
 }
 
+void test_normal_fusion(void) {
+  // Test for normal_fusion (normal_dist_intersection)
+  gsl_vector_float *v1 = gsl_vector_float_alloc(4);
+  gsl_vector_float *v2 = gsl_vector_float_alloc(4);
+  gsl_vector_float *v3 = gsl_vector_float_alloc(4);
+  gsl_matrix_float *P1 = gsl_matrix_float_alloc(4, 4);
+  gsl_matrix_float *P2 = gsl_matrix_float_alloc(4, 4);
+  gsl_matrix_float *P3 = gsl_matrix_float_alloc(4, 4);
+
+  // Set v1 and v2 to known values
+  for (int i = 0; i < 4; ++i) {
+    gsl_vector_float_set(v1, i, 1.0f + i);
+    gsl_vector_float_set(v2, i, 2.0f + i);
+    for (int j = 0; j < 4; ++j) {
+      gsl_matrix_float_set(P1, i, j, (i == j) ? 1.0f +j: 0.0f);
+      gsl_matrix_float_set(P2, i, j, (i == j) ? 2.0f +j: 0.0f);
+    }
+  }
+
+  // Call the function under test
+  int status = normal_dist_intersection(v1, v2, v3, P1, P2, P3);
+  TEST_ASSERT_EQUAL_INT(0, status);
+
+  // Check that v3 and P3 are finite and P3 diagonal is positive
+  for (int i = 0; i < 4; ++i) {
+    TEST_ASSERT_TRUE(isfinite(gsl_vector_float_get(v3, i)));
+    TEST_ASSERT_TRUE(gsl_matrix_float_get(P3, i, i) > 0.0f);
+  }
+
+  gsl_vector_float_free(v1);
+  gsl_vector_float_free(v2);
+  gsl_vector_float_free(v3);
+  gsl_matrix_float_free(P1);
+  gsl_matrix_float_free(P2);
+  gsl_matrix_float_free(P3);
+}
+
 int main(void) {
   sigma_mag = (gsl_vector_float*)gsl_vector_float_alloc(3);
   gsl_vector_float_set_all(sigma_mag, MAG_SIGMA);
@@ -170,6 +207,7 @@ int main(void) {
   RUN_TEST(test_mag_correct_zero_magnetometer);
   RUN_TEST(test_mag_correct_covariance_update);
   RUN_TEST(test_mag_correct_timing);
+  RUN_TEST(test_normal_fusion);
   
   return UNITY_END();
 }
