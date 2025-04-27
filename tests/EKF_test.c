@@ -213,7 +213,7 @@ void testStep(void) {
   createRotationFromQuat(pQw, &rotation);
 
   csvLog_t accLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog,
-      SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog;
+      SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog, gyrLog;
   logMatrixCSV_init(&accLog, pAcc, "accLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&qEstLog, EKF_ctx.q_est, "qEstLog.txt", GSL_VECTOR);
@@ -229,6 +229,7 @@ void testStep(void) {
   logMatrixCSV_init(&QLog, EKF_ctx.wk->Q, "QLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&RLog, EKF_ctx.wk->R, "RLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&KLog, EKF_ctx.wk->K, "KLog.txt", GSL_MATRIX);
+  logMatrixCSV_init(&gyrLog, EKF_ctx.velAng, "gyrLog.txt", GSL_VECTOR);
 
   gsl_rng *randHandle = gsl_rng_alloc(gsl_rng_default);
 
@@ -275,7 +276,7 @@ void testRealCase(void) {
   measures_t measure;
 
   csvLog_t quatLog, vLog, HLog, PLog, FLog,
-      SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog;
+      SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog, magLog, accLog, gyrLog;
   logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&qEstLog, EKF_ctx.q_est, "qEstLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&vLog, EKF_ctx.wk->z, "vLog.txt", GSL_VECTOR);
@@ -289,6 +290,9 @@ void testRealCase(void) {
   logMatrixCSV_init(&QLog, EKF_ctx.wk->Q, "QLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&RLog, EKF_ctx.wk->R, "RLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&KLog, EKF_ctx.wk->K, "KLog.txt", GSL_MATRIX);
+  logMatrixCSV_init(&accLog, EKF_ctx.acc, "accLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&magLog, EKF_ctx.mag, "magLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&gyrLog, EKF_ctx.velAng, "gyrLog.txt", GSL_VECTOR);
 
   for (int i = 0; i < size; i++) {
     measure.acc[0] = pAcc[i * 3];
@@ -297,6 +301,9 @@ void testRealCase(void) {
     measure.velAng[0] = pVelAng[i * 3];
     measure.velAng[1] = pVelAng[i * 3 + 1];
     measure.velAng[2] = pVelAng[i * 3 + 2];
+    measure.mag[0] = pMag[i * 3];
+    measure.mag[1] = pMag[i * 3 + 1];
+    measure.mag[2] = pMag[i * 3 + 2];
     ekfStep(&EKF_ctx, &measure, time[i]);
     logMatrixCSV_updateAll();
   }
@@ -434,7 +441,7 @@ void loadData(float **pAcc, float **pMag, float **pVelAng, float **time,
               uint32_t *size) {
   FILE *file = fopen(
       "/media/david/data/Users/deivi/Documents/Asignaturas/TFG/AHRS/partitions/"
-      "storage/storage_20250317_125311.bin",
+      "storage/storage_20250423_220127.bin",
       "rb");
 
   fread(size, sizeof(size_t), 1, file);

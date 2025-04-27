@@ -4,10 +4,11 @@ close all
 
 XSelect = 240;
 
-%measuredMag = readtable("../build/Linux/tests/magLog.txt");
-%accLog = readtable("../build/Linux/tests/accLog.txt");
+measuredMag = readtable("../build/Linux/tests/magLog.txt");
+accLog = readtable("../build/Linux/tests/accLog.txt");
+measuredGyr = readtable("../build/Linux/tests/gyrLog.txt");
 measuredQ = readtable("../build/Linux/tests/quatLog.txt");
-%expectedQ = readtable("../build/Linux/tests/quatExpectedLog.txt");
+%expectedQ = readtable("../buildtests/quatExpectedLog.txt");
 estimatedQ = readtable("../build/Linux/tests/qEstLog.txt");
 measuredv = readtable("../build/Linux/tests/vLog.txt");
 PLog = readtable("../build/Linux/tests/PLog.txt");
@@ -20,11 +21,21 @@ WLog = readtable("../build/Linux/tests/WLog.txt");
 QLog = readtable("../build/Linux/tests/QLog.txt");
 RLog = readtable("../build/Linux/tests/RLog.txt");
 KLog = readtable("../build/Linux/tests/KLog.txt");
+%% 
+imu_acc = table2array(accLog);
+imu_gyr = table2array(measuredGyr);
+imu_mag = table2array(measuredMag);
+opt_quat = table2array(measuredQ);
+sampling_rate = 1/0.05;
 
-T_window_s = [0,3000];
+
+
+
+%% 
+
+T_window_s = [0,1000];
 
 figure(1)
-subplot(1,2,1)
 plot(measuredQ.Variables)
 hold on
 xline(XSelect);
