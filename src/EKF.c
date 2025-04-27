@@ -108,13 +108,13 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
   ctx->magStdDev = gsl_vector_float_alloc(3);
   gsl_vector_float_set_all(ctx->magStdDev, MAG_STD_DEVIATION);
 
-  ctx->magCorrectionPeriod_s = 1.0f;
+  ctx->magCorrectionPeriod_s = 5.0f;
 
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
   gsl_vector_float_set(ctx->horizonRefG, 1, 0);
   gsl_vector_float_set(ctx->horizonRefG, 2, 1);
-  gsl_vector_float_scale(ctx->horizonRefG, ACC_SCALE);
+  gsl_vector_float_scale(ctx->horizonRefG, 9.81f);
 
   ctx->currentTime = 0;
   ctx->prevTime = 0;
@@ -255,14 +255,14 @@ void ekfUpdate(EKF_ctx_t* ctx, const measures_t* measures,
   for (uint8_t i = 0; i < 3; i++) {
     gsl_vector_float_set(ctx->acc, i, measures->acc[i]);
     gsl_vector_float_set(ctx->velAng, i, measures->velAng[i]);
-    gsl_vector_float_set(ctx->mag, i, measures->velAng[i]);
+    gsl_vector_float_set(ctx->mag, i, measures->mag[i]);
   }
 
   // Normalize acc
-  float accNorm = 0;
-  gsl_blas_sdot(ctx->acc, ctx->acc, &accNorm);
-  accNorm = sqrtf(accNorm);
-  gsl_vector_float_scale(ctx->acc, ACC_SCALE / accNorm);
+  //float accNorm = 0;
+  //gsl_blas_sdot(ctx->acc, ctx->acc, &accNorm);
+  //accNorm = sqrtf(accNorm);
+  //gsl_vector_float_scale(ctx->acc, ACC_SCALE / accNorm);
 
   // Normalize mag
   float magNorm = 0;

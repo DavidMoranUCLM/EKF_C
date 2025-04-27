@@ -1,8 +1,8 @@
 #include <inttypes.h>
 
-#define ACC_STD_DEVIATION (0.3*0.3)
-#define GYRO_STD_DEVIATION (0.1*0.1)
-#define MAG_STD_DEVIATION (0.01*0.01)
+#define ACC_STD_DEVIATION (6*6)
+#define GYRO_STD_DEVIATION (0.15*0.15)
+#define MAG_STD_DEVIATION (0.05*0.05)
 
 #define P_SIZE 4
 
