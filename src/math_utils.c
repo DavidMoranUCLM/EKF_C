@@ -167,8 +167,8 @@ int8_t normal_dist_intersection(const gsl_vector_float *v1,
   gsl_matrix_float2double(P1, P1_d);
   gsl_matrix_float2double(P2, P2_d);
 
-  gsl_double_pinv(P1_d, 1e-10, P1_inv_d);
-  gsl_double_pinv(P2_d, 1e-10, P2_inv_d);
+  gsl_double_pinv(P1_d, 1e-32, P1_inv_d);
+  gsl_double_pinv(P2_d, 1e-32, P2_inv_d);
 
 
   //y_d = P1_inv_d * v1_d + P2_inv_d * v2_d
@@ -187,7 +187,7 @@ int8_t normal_dist_intersection(const gsl_vector_float *v1,
   if (gsl_status==GSL_SUCCESS) {
     gsl_linalg_cholesky_invert(H_d);
   } else {
-    gsl_double_pinv(P1_inv_d, 1e-10, H_d);
+    gsl_double_pinv(P1_inv_d, 1e-32, H_d);
   }
   gsl_matrix_double2float(H_d, P3);
   
