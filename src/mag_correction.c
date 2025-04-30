@@ -8,7 +8,7 @@
 #include "gsl/gsl_matrix_float.h"
 #include "gsl/gsl_vector.h"
 #include "gsl/gsl_vector_float.h"
-#include "gsl_nan.h"
+#include "gsl/gsl_nan.h"
 #include "math.h"
 #include "math_utils.h"
 #include "utils_rotmatYawCorrectionJac.h"

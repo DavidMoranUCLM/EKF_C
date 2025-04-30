@@ -8,7 +8,6 @@
 
 typedef struct measures_s {
   float acc[3];
-  float mag[3];
   float velAng[3];
   float mag[3];
 } measures_t;

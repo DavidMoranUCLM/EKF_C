@@ -125,6 +125,8 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
   }
 
   ekfInitConditions(ctx, measures);
+  correctMag(ctx->P_current, ctx->q_current, ctx->mag,
+             ctx->magStdDev);
 }
 void ekfDeinit(EKF_ctx_t* ctx) {
   gsl_quat_float_free(ctx->q_current);
