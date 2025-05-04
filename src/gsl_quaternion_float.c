@@ -127,7 +127,7 @@ int gsl_quat_float_fromAxis(gsl_vector_float *pAxis, const float angleRad,
     norm += pAxis->data[i] * pAxis->data[i];
   }
 
-  norm /= sqrtf(norm);
+  norm = sqrtf(norm);
 
   float sinHalfAngle = sinf(angleRad / 2);
 
@@ -188,7 +188,8 @@ int gsl_quat_float_fromRotMatrix(gsl_matrix_float *pRotMat,
   return 0;
 }
 
-int gsl_quat_float_toRotMatrix(gsl_quat_float *pQuat, gsl_matrix_float *pRotMat) {
+int gsl_quat_float_toRotMatrix(gsl_quat_float *pQuat,
+                               gsl_matrix_float *pRotMat) {
   if ((pRotMat->size1 != 3) || (pRotMat->size2 != 3)) {
     return -1;
   }
@@ -201,15 +202,18 @@ int gsl_quat_float_toRotMatrix(gsl_quat_float *pQuat, gsl_matrix_float *pRotMat)
   q_y = gsl_quat_float_get(pQuat, 2);
   q_z = gsl_quat_float_get(pQuat, 3);
 
-  gsl_matrix_float_set(pRotMat, 0, 0, q_w * q_w + q_x * q_x - q_y * q_y - q_z * q_z);
+  gsl_matrix_float_set(pRotMat, 0, 0,
+                       q_w * q_w + q_x * q_x - q_y * q_y - q_z * q_z);
   gsl_matrix_float_set(pRotMat, 0, 1, 2 * (q_x * q_y - q_z * q_w));
   gsl_matrix_float_set(pRotMat, 0, 2, 2 * (q_x * q_z + q_y * q_w));
   gsl_matrix_float_set(pRotMat, 1, 0, 2 * (q_x * q_y + q_z * q_w));
-  gsl_matrix_float_set(pRotMat, 1, 1, q_w * q_w - q_x * q_x + q_y * q_y - q_z * q_z);
+  gsl_matrix_float_set(pRotMat, 1, 1,
+                       q_w * q_w - q_x * q_x + q_y * q_y - q_z * q_z);
   gsl_matrix_float_set(pRotMat, 1, 2, 2 * (q_y * q_z - q_x * q_w));
   gsl_matrix_float_set(pRotMat, 2, 0, 2 * (q_x * q_z - q_y * q_w));
   gsl_matrix_float_set(pRotMat, 2, 1, 2 * (q_y * q_z + q_x * q_w));
-  gsl_matrix_float_set(pRotMat, 2, 2, q_w * q_w + q_z * q_z - q_x * q_x - q_y * q_y);
+  gsl_matrix_float_set(pRotMat, 2, 2,
+                       q_w * q_w + q_z * q_z - q_x * q_x - q_y * q_y);
 
   return 0;
 }
@@ -239,6 +243,21 @@ void gsl_quat_float_toMatrix(gsl_quat_float *pQuat,
   gsl_matrix_float_set(pQuatMat, 1, 1, gsl_quat_float_get(pQuat, 0));
   gsl_matrix_float_set(pQuatMat, 2, 2, gsl_quat_float_get(pQuat, 0));
   gsl_matrix_float_set(pQuatMat, 3, 3, gsl_quat_float_get(pQuat, 0));
+}
+
+void gsl_quat_float_rotvec(const gsl_quat_float *q, const gsl_vector_float *vIn,
+                           gsl_vector_float *vRot) {
+  gsl_quat_float *qV =
+      gsl_quat_float_calloc();
+  gsl_quat_float *qCopy =
+      gsl_quat_float_calloc();
+  gsl_quat_float_copy(q, qCopy);
+  gsl_quat_float_fromVector(vIn, qV);
+
+  gsl_quat_float_product(qV, qCopy);
+  gsl_quat_float_conjugate(qCopy);
+  gsl_quat_float_product(qCopy, qV);
+  gsl_quat_float_get_imaginary(qCopy, vRot);
 }
 
 /**
