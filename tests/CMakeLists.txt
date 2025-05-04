@@ -28,6 +28,6 @@ add_test(EKF_test_prim TEST_EKF_PRIM)
 
 add_executable(TEST_MAG_CORRECTION mag_correct_test.c)
 target_include_directories(TEST_MAG_CORRECTION PUBLIC ../include ../unity/src)
-target_link_libraries(TEST_MAG_CORRECTION unity MAG_CORRECTION ROTMAT_YAW_CORRECTION MATH_UTILS)
+target_link_libraries(TEST_MAG_CORRECTION unity MAG_CORRECTION YAW_CORRECTION MATH_UTILS)
 
 add_test(EKF_test_mag_correct TEST_MAG_CORRECTION)

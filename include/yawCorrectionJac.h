@@ -8,11 +8,11 @@
  * C/C++ source code generated on  : 22-Apr-2025 21:43:47
  */
 
-#ifndef UTILS_ROTMATYAWCORRECTIONJAC_H
-#define UTILS_ROTMATYAWCORRECTIONJAC_H
+#ifndef UTILS_YAWCORRECTIONJAC_H
+#define UTILS_YAWCORRECTIONJAC_H
 
 /* Include Files */
-//#include "rtwtypes.h"
+// #include "rtwtypes.h"
 #include <stddef.h>
 #include <stdlib.h>
 
@@ -21,13 +21,10 @@ extern "C" {
 #endif
 
 /* Function Declarations */
-extern void utils_rotmatYawCorrectionJac(const float in1[7], const float in2[3],
+extern void rotmatYawCorrectionJac(const float in1[7], const float in2[3],
                                          float qJ[7][3]);
-
-extern void utils_rotmatYawCorrectionJac_initialize(void);
-
-extern void utils_rotmatYawCorrectionJac_terminate(void);
-
+extern void quatYawCorrectionJac(const float in1[7], const float in2[3],
+                                         float qJ[7][3]);
 #ifdef __cplusplus
 }
 #endif
