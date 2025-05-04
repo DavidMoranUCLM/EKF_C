@@ -80,7 +80,7 @@ int main() {
   // RUN_TEST(testInvFloat);
   // RUN_TEST(testGet_h);
   // RUN_TEST(testGetH);
-  //RUN_TEST(testStep);
+  // RUN_TEST(testStep);
   RUN_TEST(testRealCase);
   return UNITY_END();
 }
@@ -212,8 +212,8 @@ void testStep(void) {
   rotation_t rotation;
   createRotationFromQuat(pQw, &rotation);
 
-  csvLog_t accLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog,
-      SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog, gyrLog;
+  csvLog_t accLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog, SLog,
+      PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog, gyrLog;
   logMatrixCSV_init(&accLog, pAcc, "accLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&qEstLog, EKF_ctx.q_est, "qEstLog.txt", GSL_VECTOR);
@@ -275,8 +275,8 @@ void testRealCase(void) {
 
   measures_t measure;
 
-  csvLog_t quatLog, vLog, HLog, PLog, FLog,
-      SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog, magLog, accLog, gyrLog;
+  csvLog_t quatLog, vLog, HLog, PLog, FLog, SLog, PestLog, qEstLog, WLog, QLog,
+      RLog, invSLog, KLog, magLog, accLog, gyrLog;
   logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&qEstLog, EKF_ctx.q_est, "qEstLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&vLog, EKF_ctx.wk->z, "vLog.txt", GSL_VECTOR);
@@ -440,8 +440,7 @@ void logMatrixCSV_deinitAll() {
 void loadData(float **pAcc, float **pMag, float **pVelAng, float **time,
               uint32_t *size) {
   FILE *file = fopen(
-      "/media/david/data/Users/deivi/Documents/Asignaturas/TFG/AHRS/partitions/"
-      "storage/storage_20250423_220127.bin",
+      "/media/david/data/Users/deivi/Documents/Asignaturas/TFG/AHRS/partitions/storage/storage_20250430_235729.bin",
       "rb");
 
   fread(size, sizeof(size_t), 1, file);

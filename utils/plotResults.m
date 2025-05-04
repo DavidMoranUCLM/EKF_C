@@ -4,23 +4,25 @@ close all
 
 XSelect = 240;
 
-measuredMag = readtable("../build/Linux/tests/magLog.txt");
-accLog = readtable("../build/Linux/tests/accLog.txt");
-measuredGyr = readtable("../build/Linux/tests/gyrLog.txt");
-measuredQ = readtable("../build/Linux/tests/quatLog.txt");
-%expectedQ = readtable("../buildtests/quatExpectedLog.txt");
-estimatedQ = readtable("../build/Linux/tests/qEstLog.txt");
-measuredv = readtable("../build/Linux/tests/vLog.txt");
-PLog = readtable("../build/Linux/tests/PLog.txt");
-Pest = readtable("../build/Linux/tests/PestLog.txt");
-SLog = readtable("../build/Linux/tests/SLog.txt");
-HLog = readtable("../build/Linux/tests/HLog.txt");
-invSLog = readtable("../build/Linux/tests/invSLog.txt");
-FLog = readtable("../build/Linux/tests/FLog.txt");
-WLog = readtable("../build/Linux/tests/WLog.txt");
-QLog = readtable("../build/Linux/tests/QLog.txt");
-RLog = readtable("../build/Linux/tests/RLog.txt");
-KLog = readtable("../build/Linux/tests/KLog.txt");
+pathPrefix = "../build/Linux/";
+
+measuredMag = readtable(pathPrefix+"tests/magLog.txt");
+accLog = readtable(pathPrefix+"tests/accLog.txt");
+measuredGyr = readtable(pathPrefix+"tests/gyrLog.txt");
+measuredQ = readtable(pathPrefix+"tests/quatLog.txt");
+%expectedQ = readtable("../build/Linuxtests/quatExpectedLog.txt");
+estimatedQ = readtable(pathPrefix+"tests/qEstLog.txt");
+measuredv = readtable(pathPrefix+"tests/vLog.txt");
+PLog = readtable(pathPrefix+"tests/PLog.txt");
+Pest = readtable(pathPrefix+"tests/PestLog.txt");
+SLog = readtable(pathPrefix+"tests/SLog.txt");
+HLog = readtable(pathPrefix+"tests/HLog.txt");
+invSLog = readtable(pathPrefix+"tests/invSLog.txt");
+FLog = readtable(pathPrefix+"tests/FLog.txt");
+WLog = readtable(pathPrefix+"tests/WLog.txt");
+QLog = readtable(pathPrefix+"tests/QLog.txt");
+RLog = readtable(pathPrefix+"tests/RLog.txt");
+KLog = readtable(pathPrefix+"tests/KLog.txt");
 %% 
 imu_acc = table2array(accLog);
 imu_gyr = table2array(measuredGyr);
@@ -33,12 +35,24 @@ sampling_rate = 1/0.05;
 
 %% 
 
-T_window_s = [0,1000];
+T_window_s = [0,1500];
 
 figure(1)
 plot(measuredQ.Variables)
 hold on
 xline(XSelect);
+
+
+title("Predicted")
+xlim(T_window_s)
+
+
+eul = so3(measuredQ.Variables,"quat").eul("ZYX");
+figure(3)
+plot(eul)
+hold on
+xline(XSelect);
+ylim([-3.14,3.14])
 
 
 title("Predicted")
