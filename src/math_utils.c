@@ -112,6 +112,7 @@ int8_t gsl_double_pinv(const gsl_matrix *M, double tolerance_level,
   tolerance_level (double): The tolerance level of singular value.
   M_pinv (gsl_matrix *): The pseudo-inverse of M.
   */
+
   int m = M->size1;
   int n = M->size2;
   gsl_matrix *U = gsl_matrix_alloc(m, n);
@@ -121,6 +122,7 @@ int8_t gsl_double_pinv(const gsl_matrix *M, double tolerance_level,
   gsl_vector *col_vector = gsl_vector_alloc(m);
   gsl_matrix_memcpy(U, M);
   gsl_linalg_SV_decomp(U, V, S, work);
+  tolerance_level = GSL_MAX(m,n) * GSL_DBL_EPSILON * gsl_vector_max(S);
   for (int i = 0; i < n; i++) {
     double s = gsl_vector_get(S, i);
     gsl_matrix_get_col(col_vector, U, i);

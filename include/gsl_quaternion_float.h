@@ -136,4 +136,14 @@ extern int gsl_quat_float_toRotMatrix(gsl_quat_float* pQuat, gsl_matrix_float *p
  */
 extern void gsl_quat_float_toMatrix(gsl_quat_float* pQuat, gsl_matrix_float *pQuatMat);
 
+/**
+ * @brief Rotates a vector by a quat
+ * @param pQ Pointer to the quat to rotate with
+ * @param pVIn Pointer to the vector to rotate
+ * @param pVRot Pointer to the rotated vector
+ */
+extern void gsl_quat_float_rotvec(const gsl_quat_float* pQ,
+                                   const gsl_vector_float* pVIn,
+                                   gsl_vector_float* pVRot);
+
 #endif
