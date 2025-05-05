@@ -104,6 +104,22 @@ int8_t gsl_vector_double2float(const gsl_vector *v_double,
   return 0;
 }
 
+
+int8_t gsl_matrix_issymetric(const gsl_matrix *m) {
+  if (m->size1 != m->size2) {
+    return GSL_FAILURE;
+  }
+  for (size_t i = 0; i < m->size1; ++i) {
+    for (size_t j = i + 1; j < m->size2; ++j) {
+      if (abs(gsl_matrix_get(m, i, j) - gsl_matrix_get(m, j, i)) > GSL_DBL_EPSILON) {
+        return GSL_FAILURE;
+      }
+    }
+  }
+  return GSL_SUCCESS;
+}
+
+
 int8_t gsl_double_pinv(const gsl_matrix *M, double tolerance_level,
                      gsl_matrix *M_pinv) {
   /* Calculate the pseudo-inverse for a given matrix.
@@ -134,6 +150,16 @@ int8_t gsl_double_pinv(const gsl_matrix *M, double tolerance_level,
     gsl_matrix_set_col(U, i, col_vector);
   }
   gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, V, U, 0.0, M_pinv);
+
+  int is_sym = gsl_matrix_issymetric(M);
+  if (is_sym == GSL_SUCCESS) {
+    gsl_matrix *M_pinv_T = gsl_matrix_alloc(m, n);
+    gsl_matrix_transpose_memcpy(M_pinv_T, M_pinv);
+    gsl_matrix_add(M_pinv, M_pinv_T);
+    gsl_matrix_scale(M_pinv, 0.5f);
+    gsl_matrix_free(M_pinv_T);
+  }
+
   gsl_matrix_free(U);
   gsl_matrix_free(V);
   gsl_vector_free(S);
@@ -176,6 +202,7 @@ int8_t normal_dist_intersection(const gsl_vector_float *v1,
   //y_d = P1_inv_d * v1_d + P2_inv_d * v2_d
   gsl_blas_dsymv(CblasUpper, 1.0, P1_inv_d, v1_d, 0.0, y_d);
   gsl_blas_dsymv(CblasUpper, 1.0, P2_inv_d, v2_d, 1, y_d);
+  
   //H = P1_inv_d + P2_inv_d
   gsl_matrix_memcpy(H_d, P1_inv_d);
   gsl_matrix_add(H_d, P2_inv_d);
