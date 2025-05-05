@@ -184,7 +184,7 @@ void quatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
       angle = acosf(angle);
     }
 
-    gsl_quat_float_fromAxis(tilt_axis, angle, q1);
+    gsl_quat_float_fromAxis(tilt_axis, -angle, q1);
     gsl_quat_float_rotvec(q1, mag, level_mag);
   }
 
