@@ -29,6 +29,12 @@ extern int8_t gsl_vector_float2double(const gsl_vector_float *v_float,
 extern int8_t gsl_vector_double2float(const gsl_vector *v_double,
                                     gsl_vector_float *v_float);
 
+extern int8_t gsl_matrix_issymetric(const gsl_matrix *m);          
+extern int8_t gsl_matrix_force_symmetric(gsl_matrix *m);     
+
+extern int8_t gsl_matrix_float_issymetric(const gsl_matrix *m);          
+extern int8_t gsl_matrix_float_force_symmetric(gsl_matrix *m); 
+
 /* *****************************************************************************
 A demonstration for calculating pseudo-inverse matrix using the GNU Scientific
 Library (GSL).

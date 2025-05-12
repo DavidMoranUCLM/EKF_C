@@ -9,9 +9,9 @@ pathPrefix = "../build/Linux/";
 measuredMag = readtable(pathPrefix+"tests/magLog.txt");
 accLog = readtable(pathPrefix+"tests/accLog.txt");
 measuredGyr = readtable(pathPrefix+"tests/gyrLog.txt");
-measuredQ = readtable(pathPrefix+"tests/quatLog.txt");
+measuredQ = readtable(pathPrefix+"tests/stateLog.txt");
 %expectedQ = readtable("../build/Linuxtests/quatExpectedLog.txt");
-estimatedQ = readtable(pathPrefix+"tests/qEstLog.txt");
+estimatedQ = readtable(pathPrefix+"tests/stateEstLog.txt");
 measuredv = readtable(pathPrefix+"tests/vLog.txt");
 PLog = readtable(pathPrefix+"tests/PLog.txt");
 Pest = readtable(pathPrefix+"tests/PestLog.txt");
@@ -38,16 +38,29 @@ sampling_rate = 1/0.05;
 T_window_s = [0,1500];
 
 figure(1)
-plot(measuredQ.Variables)
+measQ = measuredQ.Variables;
+P = reshape(table2array(PLog),7,7,[]);
+for i=1:7
+varQ(i,:) = squeeze(P(i,i,:));
+end
+CI99 = CI(varQ(1:4,:),0.99);
+%plot(measQ(:,1:4))
 hold on
+plot(measQ(:,1:4)+CI99, "LineWidth",0.1,"Color","k");
+plot(measQ(:,1:4)-CI99, "LineWidth",0.1,"Color","k");
 xline(XSelect);
 
+figure(4)
+measQ = measuredQ.Variables;
+plot(measQ(:,5:7))
+hold on
+xline(XSelect);
 
 title("Predicted")
 xlim(T_window_s)
 
 
-eul = so3(measuredQ.Variables,"quat").eul("ZYX");
+eul = so3(measQ(:,1:4),"quat").eul("ZYX");
 figure(3)
 plot(eul)
 hold on
@@ -161,3 +174,10 @@ hold on
 xline(XSelect);
 xlim(T_window_s)
 title("KLog")
+
+
+function out = CI(variance, conf)
+
+     out = (sqrt(2)*erfcinv(2*(1-conf)).*abs(sqrt(variance)))';
+
+end

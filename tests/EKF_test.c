@@ -148,7 +148,7 @@ void testEKFInit(void) {
   TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, acc, EKF_ctx.acc->data, 3);
   TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, velAng, EKF_ctx.velAng->data, 3);
 
-  TEST_ASSERT_EQUAL_FLOAT_ARRAY(q0, EKF_ctx.q_current->data, 4);
+  TEST_ASSERT_EQUAL_FLOAT_ARRAY(q0, EKF_ctx.state_current->data, 4);
 
   gsl_matrix_float *P0 = gsl_matrix_float_calloc(4, 4);
   gsl_matrix_float_set_identity(P0);
@@ -163,7 +163,10 @@ void testGet_h(void) {
   gsl_vector_float_set(Axis, 0, 0);
   gsl_vector_float_set(Axis, 1, 0);
   gsl_vector_float_set(Axis, 2, 1);
-  gsl_quat_float_fromAxis(Axis, rotAngRad, EKF_ctx.q_est);
+
+  gsl_vector_float_view q_est = gsl_vector_float_subvector(EKF_ctx.state_est, 0 ,4);
+
+  gsl_quat_float_fromAxis(Axis, rotAngRad, &q_est.vector);
   get_h(&EKF_ctx);
   TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, EKF_ctx.horizonRefG->data,
                                  EKF_ctx.wk->h->data, 3);
@@ -182,7 +185,10 @@ void testGetH(void) {
   gsl_vector_float_set(Axis, 0, 0);
   gsl_vector_float_set(Axis, 1, 0);
   gsl_vector_float_set(Axis, 2, 1);
-  gsl_quat_float_fromAxis(Axis, rotAngRad, EKF_ctx.q_est);
+
+  gsl_vector_float_view q_est = gsl_vector_float_subvector(EKF_ctx.state_est, 0 ,4);
+
+  gsl_quat_float_fromAxis(Axis, rotAngRad, &q_est.vector);
   getH(&EKF_ctx);
 }
 
@@ -215,8 +221,8 @@ void testStep(void) {
   csvLog_t accLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog, SLog,
       PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog, gyrLog;
   logMatrixCSV_init(&accLog, pAcc, "accLog.txt", GSL_VECTOR);
-  logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
-  logMatrixCSV_init(&qEstLog, EKF_ctx.q_est, "qEstLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&quatLog, EKF_ctx.state_current, "stateLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&qEstLog, EKF_ctx.state_est, "stateEstLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&expectedQuatLog, pQw, "quatExpectedLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&vLog, EKF_ctx.wk->z, "vLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&HLog, EKF_ctx.wk->H, "HLog.txt", GSL_MATRIX);
@@ -277,8 +283,8 @@ void testRealCase(void) {
 
   csvLog_t quatLog, vLog, HLog, PLog, FLog, SLog, PestLog, qEstLog, WLog, QLog,
       RLog, invSLog, KLog, magLog, accLog, gyrLog;
-  logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
-  logMatrixCSV_init(&qEstLog, EKF_ctx.q_est, "qEstLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&quatLog, EKF_ctx.state_current, "stateLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&qEstLog, EKF_ctx.state_est, "stateEstLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&vLog, EKF_ctx.wk->z, "vLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&HLog, EKF_ctx.wk->H, "HLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&PLog, EKF_ctx.P_current, "PLog.txt", GSL_MATRIX);
@@ -440,7 +446,7 @@ void logMatrixCSV_deinitAll() {
 void loadData(float **pAcc, float **pMag, float **pVelAng, float **time,
               uint32_t *size) {
   FILE *file = fopen(
-      "/media/david/data/Users/deivi/Documents/Asignaturas/TFG/AHRS/partitions/storage/storage_20250430_235729.bin",
+      "/media/david/data/Users/deivi/Documents/Asignaturas/TFG/AHRS/partitions/storage/storage_20250506_203509.bin",
       "rb");
 
   fread(size, sizeof(size_t), 1, file);

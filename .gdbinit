@@ -1,1 +1,1 @@
-source /media/david/data/Users/deivi/Documents/Asignaturas/TFG/kalman/C/gdb_format.py
+-exec source /media/david/data/Users/deivi/Documents/Asignaturas/TFG/kalman/C/gdb_format.py
