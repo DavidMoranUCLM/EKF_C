@@ -22,9 +22,12 @@ extern "C" {
 
 /* Function Declarations */
 extern void rotmatYawCorrectionJac(const float in1[7], const float in2[3],
-                                         float qJ[7][3]);
+                                   float qJ[7][3]);
 extern void quatYawCorrectionJac(const float in1[7], const float in2[3],
-                                         float qJ[7][3]);
+                                 float qJ[7][3]);
+
+extern void quatYawCorrectionJacS(const float in1[7], const float in2[3],
+                                 float qJS[7][7]);
 #ifdef __cplusplus
 }
 #endif

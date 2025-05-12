@@ -14,6 +14,19 @@
 #include "math_utils.h"
 #include "yawCorrectionJac.h"
 
+static struct {
+  gsl_matrix_float *J1;
+  gsl_matrix_float *J2;
+  gsl_matrix_float *tmp7_3;
+  gsl_matrix_float *tmp7_7;
+  gsl_matrix_float *sigma;
+  gsl_matrix_float *P2;
+  gsl_matrix_float *P3;
+  gsl_vector_float *x2;
+  gsl_vector_float *x3;
+
+} wk;
+
 void qRotMatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   // Extract quaternion components
   float w = gsl_vector_float_get(state, 0);
@@ -145,7 +158,6 @@ void quatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   // Extract quaternion components
 
   float angle;
-  
 
   gsl_quat_float *q1 = gsl_quat_float_alloc();
   gsl_quat_float *q2 = gsl_quat_float_alloc();
@@ -196,7 +208,7 @@ void quatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
 
   float hemisphere;
   gsl_blas_sdot(state, q2, &hemisphere);
-  if (hemisphere<0){
+  if (hemisphere < 0) {
     gsl_vector_float_scale(q2, -1.f);
   }
 
@@ -212,75 +224,84 @@ void quatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
 }
 
 void PCorrectMag(const gsl_vector_float *x, const gsl_vector_float *mag,
-                 const gsl_vector_float *sigma_mag, gsl_matrix_float *P) {
-  gsl_matrix_float *J = gsl_matrix_float_alloc(7, 3);
-  gsl_matrix_float *tmp4_3 = gsl_matrix_float_alloc(4, 3);
-  gsl_matrix_float *tmp4_4 = gsl_matrix_float_alloc(4, 4);
-  gsl_matrix_float_view J_4_3 = gsl_matrix_float_submatrix(J, 0, 0, 4, 3);
-  gsl_matrix_float *sigma = gsl_matrix_float_calloc(3, 3);
+                 const gsl_vector_float *sigma_mag, gsl_matrix_float *P_current,
+                 gsl_matrix_float *P) {
+  if (wk.J1 == NULL) {
+    wk.J1 = gsl_matrix_float_alloc(7, 3);
+    wk.J2 = gsl_matrix_float_alloc(7, 7);
+    wk.tmp7_3 = gsl_matrix_float_alloc(7, 3);
+    wk.tmp7_7 = gsl_matrix_float_alloc(7, 7);
+    wk.sigma = gsl_matrix_float_calloc(3, 3);
+  }
 
   // float J1[3][7];
   // rotmatYawCorrectionJac(x->data, mag->data, J->data);
-  quatYawCorrectionJac(x->data, mag->data, J->data);
+  quatYawCorrectionJac(x->data, mag->data, wk.J1->data);
   for (int i = 0; i < 7; ++i) {
     for (int j = 0; j < 3; ++j) {
-      if (gsl_isnan(gsl_matrix_float_get(J, i, j))) {
-        gsl_matrix_float_set(J, i, j, 10000.f);
+      if (gsl_isnan(gsl_matrix_float_get(wk.J1, i, j))) {
+        gsl_matrix_float_set(wk.J1, i, j, 10000.f);
       }
     }
   }
 
-  gsl_matrix_float_set(sigma, 0, 0, sigma_mag->data[0]);
-  gsl_matrix_float_set(sigma, 1, 1, sigma_mag->data[1]);
-  gsl_matrix_float_set(sigma, 2, 2, sigma_mag->data[2]);
+  gsl_matrix_float_set(wk.sigma, 0, 0, sigma_mag->data[0]);
+  gsl_matrix_float_set(wk.sigma, 1, 1, sigma_mag->data[1]);
+  gsl_matrix_float_set(wk.sigma, 2, 2, sigma_mag->data[2]);
 
-  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1.0, &J_4_3.matrix, sigma, 0.0,
-                 tmp4_3);
-  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1.0, tmp4_3, &J_4_3.matrix, 0.0, P);
+  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1.0, wk.J1, wk.sigma, 0.0,
+                 wk.tmp7_3);
+  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1.0, wk.tmp7_3, wk.J1, 0.0, P);
 
-  //Aplicar simetria 0.5*(P+P^T)
-  gsl_matrix_float_transpose_memcpy(tmp4_4, P);
-  gsl_matrix_float_add(P, tmp4_4);
+  quatYawCorrectionJacS(x->data, mag->data, wk.J2->data);
+
+  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1.f, wk.J2, P_current, 0.0,
+                 wk.tmp7_7);
+  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1.f, wk.tmp7_7, wk.J2, 1.f, P);
+
+  // Aplicar simetria 0.5*(P+P^T)
+  gsl_matrix_float_transpose_memcpy(wk.tmp7_7, P);
+  gsl_matrix_float_add(P, wk.tmp7_7);
   gsl_matrix_float_scale(P, 0.5f);
 
-
-  gsl_matrix_float_free(J);
-  gsl_matrix_float_free(tmp4_3);
-  gsl_matrix_float_free(tmp4_4);
-  gsl_matrix_float_free(sigma);
+  // gsl_matrix_float_free(J1);
+  // gsl_matrix_float_free(J2);
+  // gsl_matrix_float_free(tmp7_3);
+  // gsl_matrix_float_free(tmp7_7);
+  // gsl_matrix_float_free(sigma);
   return;
 }
 
 void correctMag(gsl_matrix_float *P1, gsl_vector_float *x1,
                 const gsl_vector_float *mag,
                 const gsl_vector_float *mag_sigma) {
-  gsl_matrix_float *P2 = gsl_matrix_float_alloc(4, 4);
-  gsl_matrix_float *P3 = gsl_matrix_float_alloc(4, 4);
-
-  gsl_vector_float *x2 = gsl_vector_float_alloc(4);
-  gsl_vector_float *x2_1 = gsl_vector_float_alloc(4);
-  gsl_vector_float *x3 = gsl_vector_float_alloc(4);
-
-  gsl_vector_float_memcpy(x2, x1);
-  gsl_vector_float_memcpy(x2_1, x1);
-  //qRotMatCorrectMag(x2_1, mag);
-  quatCorrectMag(x2, mag);
-  PCorrectMag(x1, mag, mag_sigma, P2);
-
-  normal_dist_intersection(x1, x2, x3, P1, P2, P3);
-
-  float hemisphere;
-  gsl_blas_sdot(x1, x3, &hemisphere);
-  if (hemisphere<0){
-    gsl_vector_float_scale(x3, -1.f);
+  if (wk.P2 == NULL) {
+    wk.P2 = gsl_matrix_float_alloc(P1->size1, P1->size2);
+    wk.P3 = gsl_matrix_float_alloc(P1->size1, P1->size2);
+    wk.x2 = gsl_vector_float_alloc(x1->size);
+    wk.x3 = gsl_vector_float_alloc(x1->size);
   }
 
-  gsl_vector_float_memcpy(x1, x3);
-  gsl_matrix_float_memcpy(P1, P3);
+  gsl_vector_float_memcpy(wk.x2, x1);
+  gsl_vector_float_view q2_view = gsl_vector_float_subvector(wk.x2, 0, 4);
 
-  gsl_matrix_float_free(P2);
-  gsl_matrix_float_free(P3);
-  gsl_vector_float_free(x2);
-  gsl_vector_float_free(x3);
+  quatCorrectMag(&q2_view.vector, mag);
+  PCorrectMag(x1, mag, mag_sigma, P1,wk.P2);
+
+  normal_dist_intersection(x1, wk.x2, wk.x3, P1, wk.P2, wk.P3);
+
+  float hemisphere;
+  gsl_blas_sdot(x1, wk.x3, &hemisphere);
+  if (hemisphere < 0) {
+    gsl_vector_float_scale(wk.x3, -1.f);
+  }
+
+  gsl_vector_float_memcpy(x1, wk.x3);
+  gsl_matrix_float_memcpy(P1, wk.P3);
+
+  // gsl_matrix_float_free(P2);
+  // gsl_matrix_float_free(P3);
+  // gsl_vector_float_free(x2);
+  // gsl_vector_float_free(x3);
   return;
 }

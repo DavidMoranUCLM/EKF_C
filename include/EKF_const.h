@@ -1,14 +1,18 @@
 #include <inttypes.h>
 
-#define ACC_STD_DEVIATION (6*6)
+#define ACC_STD_DEVIATION (0.5*0.5)
 #define GYRO_STD_DEVIATION (0.15*0.15)
-#define MAG_STD_DEVIATION (0.05*0.05)
+#define MAG_STD_DEVIATION (0.5*0.5)
+#define GYRO_BIAS_NOISE (0.005*0.005)
 
-#define P_SIZE 4
+#define STATE_SIZE 7
+#define CORRECTION_SIZE 3
 
 #define ESTIMATE_ORDER (uint8_t)1
 #define DIFERENTIAL_STEP 1e-3F
 #define P_ESTIMATE_SCALE 1.F
+
+#define MAG_CORRECTION_PERIOD_S 1.f
 
 
 #define ACC_SCALE 1.F
