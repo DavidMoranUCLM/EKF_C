@@ -258,6 +258,10 @@ void gsl_quat_float_rotvec(const gsl_quat_float *q, const gsl_vector_float *vIn,
   gsl_quat_float_conjugate(qCopy);
   gsl_quat_float_product(qCopy, qV);
   gsl_quat_float_get_imaginary(qCopy, vRot);
+
+  gsl_quat_float_free(qV);
+  gsl_quat_float_free(qCopy);
+  
 }
 
 /**

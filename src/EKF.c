@@ -660,6 +660,8 @@ void getFPrimitive(const gsl_vector_float* velAng, float deltaT,
 
   gsl_matrix_float_scale(F, (deltaT) * 0.5f);
   gsl_matrix_float_add(F, I7);
+
+  gsl_vector_float_free(velAngNoBias);
 }
 
 void getWPrimitive(const gsl_quat_float* qPrev, float deltaT,
