@@ -13,11 +13,12 @@ const char *TAG = "EKF_C";
 TEST_CASE("1", "[EKF_C]") {
   ESP_LOGI(TAG,"Beginning test...");
   for (int i = 0; i < 100; i++) {
-    ESP_LOGI(TAG,"Iteration %d", i);
+    //ESP_LOGI(TAG,"Iteration %d", i);
     tic(initTic);
     ekfInit(&ekf, &meas);
     toc(initTic);
     ekfDeinit(&ekf);
+    ESP_LOGI(TAG, "Free heap size: %lu B", esp_get_free_heap_size());
   }
   tictoc_print(initTic);
 }
@@ -25,7 +26,7 @@ TEST_CASE("1", "[EKF_C]") {
 void setUp(void) {
   meas.acc[0] = 0;
   meas.acc[1] = 0;
-  meas.acc[2] = -9.81;
+  meas.acc[2] = 9.81;
   meas.mag[0] = 0;
   meas.mag[1] = 1;
   meas.mag[2] = 0;
