@@ -237,13 +237,13 @@ void PCorrectMag(const gsl_vector_float *x, const gsl_vector_float *mag,
   // float J1[3][7];
   // rotmatYawCorrectionJac(x->data, mag->data, J->data);
   quatYawCorrectionJac(x->data, mag->data, wk.J1->data);
-  for (int i = 0; i < 7; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      if (gsl_isnan(gsl_matrix_float_get(wk.J1, i, j))) {
-        gsl_matrix_float_set(wk.J1, i, j, 10000.f);
-      }
-    }
-  }
+  // for (int i = 0; i < 7; ++i) {
+  //   for (int j = 0; j < 3; ++j) {
+  //     if (gsl_isnan(gsl_matrix_float_get(wk.J1, i, j))) {
+  //       gsl_matrix_float_set(wk.J1, i, j, 10000.f);
+  //     }
+  //   }
+  // }
 
   gsl_matrix_float_set(wk.sigma, 0, 0, sigma_mag->data[0]);
   gsl_matrix_float_set(wk.sigma, 1, 1, sigma_mag->data[1]);
@@ -286,8 +286,20 @@ void correctMag(gsl_matrix_float *P1, gsl_vector_float *x1,
   gsl_vector_float_view q2_view = gsl_vector_float_subvector(wk.x2, 0, 4);
 
   quatCorrectMag(&q2_view.vector, mag);
-  PCorrectMag(x1, mag, mag_sigma, P1,wk.P2);
+  for (uint8_t i = 0; i < q2_view.vector.size; i++) {
+    if (gsl_isnan(gsl_vector_float_get(&q2_view.vector, i))) {
+      return;
+    }
+  }
 
+  PCorrectMag(x1, mag, mag_sigma, P1, wk.P2);
+  for (uint8_t i = 0; i < wk.P2->size1; i++) {
+    for (uint8_t j = 0; j < wk.P2->size2; j++) {
+      if (gsl_isnan(gsl_matrix_float_get(wk.P2, i, j))) {
+        return;
+      }
+    }
+  }
   normal_dist_intersection(x1, wk.x2, wk.x3, P1, wk.P2, wk.P3);
 
   float hemisphere;
