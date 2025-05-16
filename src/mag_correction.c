@@ -6,9 +6,9 @@
 #include "gsl/gsl_math.h"
 #include "gsl/gsl_matrix.h"
 #include "gsl/gsl_matrix_float.h"
+#include "gsl/gsl_nan.h"
 #include "gsl/gsl_vector.h"
 #include "gsl/gsl_vector_float.h"
-#include "gsl/gsl_nan.h"
 #include "gsl_quaternion_float.h"
 #include "math.h"
 #include "math_utils.h"
@@ -26,11 +26,11 @@ void qRotMatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   gsl_matrix_float_set(R, 0, 0, 1 - 2 * (y * y + z * z));
   gsl_matrix_float_set(R, 0, 1, 2 * (x * y - z * w));
   gsl_matrix_float_set(R, 0, 2, 2 * (x * z + y * w));
-  
+
   gsl_matrix_float_set(R, 1, 0, 2 * (x * y + z * w));
   gsl_matrix_float_set(R, 1, 1, 1 - 2 * (x * x + z * z));
   gsl_matrix_float_set(R, 1, 2, 2 * (y * z - x * w));
-  
+
   gsl_matrix_float_set(R, 2, 0, 2 * (x * z - y * w));
   gsl_matrix_float_set(R, 2, 1, 2 * (y * z + x * w));
   gsl_matrix_float_set(R, 2, 2, 1 - 2 * (x * x + y * y));
@@ -145,7 +145,6 @@ void quatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   // Extract quaternion components
 
   float angle;
-  
 
   gsl_quat_float *q1 = gsl_quat_float_alloc();
   gsl_quat_float *q2 = gsl_quat_float_alloc();
@@ -196,7 +195,7 @@ void quatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
 
   float hemisphere;
   gsl_blas_sdot(state, q2, &hemisphere);
-  if (hemisphere<0){
+  if (hemisphere < 0) {
     gsl_vector_float_scale(q2, -1.f);
   }
 
@@ -222,13 +221,6 @@ void PCorrectMag(const gsl_vector_float *x, const gsl_vector_float *mag,
   // float J1[3][7];
   // rotmatYawCorrectionJac(x->data, mag->data, J->data);
   quatYawCorrectionJac(x->data, mag->data, J->data);
-  for (int i = 0; i < 7; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      if (gsl_isnan(gsl_matrix_float_get(J, i, j))) {
-        gsl_matrix_float_set(J, i, j, 10000.f);
-      }
-    }
-  }
 
   gsl_matrix_float_set(sigma, 0, 0, sigma_mag->data[0]);
   gsl_matrix_float_set(sigma, 1, 1, sigma_mag->data[1]);
@@ -238,11 +230,10 @@ void PCorrectMag(const gsl_vector_float *x, const gsl_vector_float *mag,
                  tmp4_3);
   gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1.0, tmp4_3, &J_4_3.matrix, 0.0, P);
 
-  //Aplicar simetria 0.5*(P+P^T)
+  // Aplicar simetria 0.5*(P+P^T)
   gsl_matrix_float_transpose_memcpy(tmp4_4, P);
   gsl_matrix_float_add(P, tmp4_4);
   gsl_matrix_float_scale(P, 0.5f);
-
 
   gsl_matrix_float_free(J);
   gsl_matrix_float_free(tmp4_3);
@@ -258,20 +249,30 @@ void correctMag(gsl_matrix_float *P1, gsl_vector_float *x1,
   gsl_matrix_float *P3 = gsl_matrix_float_alloc(4, 4);
 
   gsl_vector_float *x2 = gsl_vector_float_alloc(4);
-  gsl_vector_float *x2_1 = gsl_vector_float_alloc(4);
   gsl_vector_float *x3 = gsl_vector_float_alloc(4);
 
   gsl_vector_float_memcpy(x2, x1);
-  gsl_vector_float_memcpy(x2_1, x1);
-  //qRotMatCorrectMag(x2_1, mag);
   quatCorrectMag(x2, mag);
+  for (uint8_t i = 0; i < x2->size; i++) {
+    if (gsl_isnan(gsl_vector_float_get(x2, i))) {
+      return;
+    }
+  }
+
   PCorrectMag(x1, mag, mag_sigma, P2);
+  for (uint8_t i = 0; i < P2->size1; i++) {
+    for (uint8_t j = 0; j < P2->size2; j++) {
+      if (gsl_isnan(gsl_matrix_float_get(P2, i, j))) {
+        return;
+      }
+    }
+  }
 
   normal_dist_intersection(x1, x2, x3, P1, P2, P3);
 
   float hemisphere;
   gsl_blas_sdot(x1, x3, &hemisphere);
-  if (hemisphere<0){
+  if (hemisphere < 0) {
     gsl_vector_float_scale(x3, -1.f);
   }
 
