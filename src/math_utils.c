@@ -229,6 +229,7 @@ int8_t normal_dist_intersection(const gsl_vector_float *v1,
   gsl_matrix_free(P1_inv_d);
   gsl_matrix_free(P2_inv_d);
   gsl_matrix_free(P3_inv_d);
+  gsl_matrix_free(H_d);
   gsl_vector_free(v1_d);
   gsl_vector_free(v2_d);
   gsl_vector_free(v3_d);

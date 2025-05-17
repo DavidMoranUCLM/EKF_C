@@ -231,10 +231,11 @@ void PCorrectMag(const gsl_vector_float *x, const gsl_vector_float *mag,
   gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1.0, tmp4_3, &J_4_3.matrix, 0.0, P);
 
   // Aplicar simetria 0.5*(P+P^T)
+
   gsl_matrix_float_transpose_memcpy(tmp4_4, P);
   gsl_matrix_float_add(P, tmp4_4);
   gsl_matrix_float_scale(P, 0.5f);
-
+  
   gsl_matrix_float_free(J);
   gsl_matrix_float_free(tmp4_3);
   gsl_matrix_float_free(tmp4_4);
@@ -262,9 +263,7 @@ void correctMag(gsl_matrix_float *P1, gsl_vector_float *x1,
   PCorrectMag(x1, mag, mag_sigma, P2);
   for (uint8_t i = 0; i < P2->size1; i++) {
     for (uint8_t j = 0; j < P2->size2; j++) {
-      if (gsl_isnan(gsl_matrix_float_get(P2, i, j))) {
-        return;
-      }
+      if (gsl_isnan(gsl_matrix_float_get(P2, i, j))) goto free;
     }
   }
 
@@ -279,6 +278,7 @@ void correctMag(gsl_matrix_float *P1, gsl_vector_float *x1,
   gsl_vector_float_memcpy(x1, x3);
   gsl_matrix_float_memcpy(P1, P3);
 
+  free:
   gsl_matrix_float_free(P2);
   gsl_matrix_float_free(P3);
   gsl_vector_float_free(x2);

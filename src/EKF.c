@@ -147,6 +147,7 @@ void ekfDeinit(EKF_ctx_t* ctx) {
 
   deInitWorkSpace(ctx);
   free(ctx->wk);
+  ctx->wk = NULL;
 }
 void ekfStep(EKF_ctx_t* ctx, const measures_t* measures,
              const float currentTime) {
@@ -185,6 +186,9 @@ void initWorkSpace(EKF_ctx_t* ctx) {
 
   wk->z = gsl_vector_float_calloc(3);
   wk->h = gsl_vector_float_calloc(3);
+
+  wk->v1 = gsl_vector_float_calloc(3);
+  wk->v2 = gsl_vector_float_calloc(3);
 
   // NEW: Allocate double-precision buffers for QR inversion (size 6x6)
   wk->inv_tmpMatrix_d = gsl_matrix_alloc(3, 3);
@@ -225,6 +229,9 @@ void deInitWorkSpace(EKF_ctx_t* ctx) {
   gsl_vector_float_free(wk->z);
   gsl_vector_float_free(wk->h);
 
+  gsl_vector_float_free(wk->v1);
+  gsl_vector_float_free(wk->v2);
+
   gsl_matrix_float_free(wk->M1_4_3);
   gsl_matrix_float_free(wk->M2_4_4);
 
@@ -245,22 +252,6 @@ void deInitWorkSpace(EKF_ctx_t* ctx) {
   // NEW: Free tmpRTransK
   gsl_matrix_float_free(wk->tmpRTransK);
 
-  // NEW: Free double-precision buffers
-  gsl_matrix_free(wk->inv_tmpMatrix_d);
-  gsl_vector_free(wk->inv_tmpTau_d);
-  gsl_vector_free(wk->inv_tmpB_d);
-  gsl_vector_free(wk->inv_tmpX_d);
-
-  // NEW: Free preallocated temporary buffers
-  gsl_quat_float_free(wk->tmpQuat);
-  gsl_matrix_float_free(wk->tmp4x4);
-  gsl_matrix_float_free(wk->tmp3x3);
-  gsl_matrix_float_free(wk->tmpStdDevMat);
-  gsl_matrix_float_free(wk->tmpBufferMat);
-  gsl_vector_float_free(wk->tmp3vec);
-
-  // NEW: Free tmpRTransK
-  gsl_matrix_float_free(wk->tmpRTransK);
 }
 
 void ekfUpdate(EKF_ctx_t* ctx, const measures_t* measures,
