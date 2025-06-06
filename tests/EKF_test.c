@@ -297,7 +297,7 @@ void testRealCase(void) {
   for (int i = 0; i < size; i++) {
     measure.acc[0] = pAcc[i * 3];
     measure.acc[1] = pAcc[i * 3 + 1];
-    measure.acc[2] = pAcc[i * 3 + 2];
+    measure.acc[2] = -pAcc[i * 3 + 2];
     measure.velAng[0] = pVelAng[i * 3];
     measure.velAng[1] = pVelAng[i * 3 + 1];
     measure.velAng[2] = pVelAng[i * 3 + 2];
