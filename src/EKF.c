@@ -113,7 +113,7 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
   gsl_vector_float_set(ctx->horizonRefG, 1, 0);
-  gsl_vector_float_set(ctx->horizonRefG, 2, 1);
+  gsl_vector_float_set(ctx->horizonRefG, 2, -1);
   gsl_vector_float_scale(ctx->horizonRefG, GSL_CONST_MKS_GRAV_ACCEL);
 
   ctx->currentTime = 0;
@@ -126,7 +126,7 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
   }
 
   ekfInitConditions(ctx, measures);
-  correctMag(ctx->P_current, ctx->q_current, ctx->mag,
+  correctMag(ctx->P_current, ctx->state_current, ctx->mag,
              ctx->magStdDev);
 }
 void ekfDeinit(EKF_ctx_t* ctx) {
