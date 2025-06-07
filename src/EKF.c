@@ -108,7 +108,7 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
   ctx->mag = gsl_vector_float_calloc(3);
 
   ctx->magStdDev = gsl_vector_float_alloc(3);
-  gsl_vector_float_set_all(ctx->magStdDev, MAG_STD_DEVIATION);
+  gsl_vector_float_set_all(ctx->magStdDev, MAG_VARIANCE);
 
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
@@ -126,7 +126,7 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
   }
 
   ekfInitConditions(ctx, measures);
-  correctMag(ctx->P_current, ctx->q_current, ctx->mag,
+  correctMag(ctx->P_current, ctx->state_current, ctx->mag,
              ctx->magStdDev);
 }
 void ekfDeinit(EKF_ctx_t* ctx) {
@@ -326,11 +326,17 @@ void getW(EKF_ctx_t* ctx) {
 void getQ(EKF_ctx_t* ctx) {
   getW(ctx);
 
-  gsl_blas_sgemm(CblasNoTrans, CblasTrans, GYRO_STD_DEVIATION, ctx->wk->W,
+  gsl_blas_sgemm(CblasNoTrans, CblasTrans, GYRO_VARIANCE, ctx->wk->W,
                  ctx->wk->W, 0, ctx->wk->Q);
   gsl_matrix_float_set(ctx->wk->Q, 4, 4, GYRO_BIAS_NOISE);
   gsl_matrix_float_set(ctx->wk->Q, 5, 5, GYRO_BIAS_NOISE);
   gsl_matrix_float_set(ctx->wk->Q, 6, 6, GYRO_BIAS_NOISE);
+}
+
+void PCorrect(EKF_ctx_t* ctx) {
+  EKF_work_ctx_t* wk = ctx->wk;
+  PCorrectPrimitive(ctx->P_est, wk->K, wk->H, wk->R, ctx->P_current, wk->tmp7x7,
+                    wk->tmpRTransK, wk->I7);
 }
 
 void ekfCorrect(EKF_ctx_t* ctx) {
@@ -355,11 +361,7 @@ void ekfCorrect(EKF_ctx_t* ctx) {
   }
 }
 
-void PCorrect(EKF_ctx_t* ctx) {
-  EKF_work_ctx_t* wk = ctx->wk;
-  PCorrectPrimitive(ctx->P_est, wk->K, wk->H, wk->R, ctx->P_current, wk->tmp7x7,
-                    wk->tmpRTransK, wk->I7);
-}
+
 
 void get_h(EKF_ctx_t* ctx) {
   EKF_work_ctx_t* wk = ctx->wk;
@@ -609,7 +611,7 @@ void getHPrimitive(const gsl_vector_float* state_est, const gsl_vector_float* ac
 void getRPrimitive(gsl_matrix_float* R) {
   gsl_matrix_float_set_zero(R);
   for (int i = 0; i < 3; i++) {
-    gsl_matrix_float_set(R, i, i, ACC_STD_DEVIATION);
+    gsl_matrix_float_set(R, i, i, ACC_VARIANCE);
   }
 }
 
