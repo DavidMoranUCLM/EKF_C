@@ -102,6 +102,18 @@ extern int gsl_quat_float_fromAxis(gsl_vector_float* pAxis,
  */
 extern int gsl_quat_float_fromVector(gsl_vector_float* pVector, gsl_quat_float *pQ);
 
+
+/**
+ * @brief Creates a quaternion from Euler angles (roll, pitch, yaw)
+ * 
+ * @param roll Roll angle in radians
+ * @param pitch Pitch angle in radians
+ * @param yaw Yaw angle in radians
+ * @param pQ Pointer to the created quaternion
+ * @return int 0 if successful, non-zero otherwise
+ */
+extern int gsl_quat_float_fromEuler(float roll, float pitch, float yaw, gsl_quat_float *pQ);
+
 /**
  * @brief Gets the closest quat equivalent to the rotation of pRotMat
  * @param pQ pointer to quat

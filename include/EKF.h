@@ -40,21 +40,21 @@ typedef struct EKF_work_ctx_s {
   gsl_vector_float *v1;
   gsl_vector_float *v2;
 
-  // NEW: Preallocated temporary buffers to avoid alloc/free on every call
-  gsl_quat_float *tmpQuat;         // 4-element quaternion buffer
+  // NEW: Preallocated temporary buffers to avoid alloc/free on every call  
+  gsl_quat_float  *tmpQuat;         // 4-element quaternion buffer  
   gsl_vector_float *tmpState;
-  gsl_matrix_float *tmp4x4;        // 4x4 matrix buffer
+  gsl_matrix_float *tmp4x4;          // 4x4 matrix buffer  
   gsl_matrix_float *tmp7x7;        // 4x4 matrix buffer
-  gsl_matrix_float *tmp3x3;        // 3x3 matrix buffer
-  gsl_matrix_float *tmpStdDevMat;  // 3x3 temporary for standard deviation
-  gsl_matrix_float *tmpBufferMat;  // 3x4 temporary buffer
-  gsl_vector_float *tmp3vec;       // 3-element vector temporary
+  gsl_matrix_float *tmp3x3;          // 3x3 matrix buffer  
+  gsl_matrix_float *tmpStdDevMat;    // 3x3 temporary for standard deviation  
+  gsl_matrix_float *tmpBufferMat;    // 3x4 temporary buffer  
+  gsl_vector_float *tmp3vec;         // 3-element vector temporary  
 
   // NEW: Additional preallocated double-precision buffers for QR inversion
-  gsl_matrix *inv_tmpMatrix_d;  // double matrix of size 6x6
-  gsl_vector *inv_tmpTau_d;     // double vector of size 6
-  gsl_vector *inv_tmpB_d;       // double vector of size 6
-  gsl_vector *inv_tmpX_d;       // double vector of size 6
+  gsl_matrix      *inv_tmpMatrix_d; // double matrix of size 6x6
+  gsl_vector      *inv_tmpTau_d;    // double vector of size 6
+  gsl_vector      *inv_tmpB_d;      // double vector of size 6
+  gsl_vector      *inv_tmpX_d;      // double vector of size 6
 
   // NEW: Temporary matrix for the product R * Trans(K)
   gsl_matrix_float *tmpRTransK;
@@ -83,6 +83,10 @@ typedef struct EKF_ctx_s {
   float magCorrectionPeriod_s;
   float currentTime;
   float prevTime;
+  float lastMagCorection;
+
+  int (*getSemaphore)(void* sem);
+  int (*releaseSemaphore)(void* sem);
 
 } EKF_ctx_t;
 
@@ -110,6 +114,7 @@ void ekfDeinit(EKF_ctx_t *ctx);
  */
 void ekfStep(EKF_ctx_t *ctx, const measures_t *measures,
              const float currentTime);
+
 
 #ifdef TEST_ENABLE
 

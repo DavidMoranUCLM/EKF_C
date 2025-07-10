@@ -6,9 +6,9 @@
 #include "gsl/gsl_math.h"
 #include "gsl/gsl_matrix.h"
 #include "gsl/gsl_matrix_float.h"
+#include "gsl/gsl_nan.h"
 #include "gsl/gsl_vector.h"
 #include "gsl/gsl_vector_float.h"
-#include "gsl_nan.h"
 #include "gsl_quaternion_float.h"
 #include "math.h"
 #include "math_utils.h"
@@ -26,6 +26,15 @@ static struct {
   gsl_vector_float *x3;
 
 } wk;
+
+void correctYawENU_2_NED(float *yaw) {
+  *yaw = fmodf(*yaw + M_PI, M_PI * 2) - M_PI; // -pi,pi
+
+}
+
+void correctYawNED_2_ENU(float *yaw) {
+  *yaw = fmodf(*yaw - M_PI, M_PI * 2) + M_PI; // -pi,pi
+}
 
 void qRotMatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   // Extract quaternion components
@@ -53,9 +62,13 @@ void qRotMatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   float R21 = gsl_matrix_float_get(R, 1, 0);
   float yaw = atan2f(R21, R11);
 
+  //correctYawENU_2_NED(&yaw);
+
+
+
   // Create unyaw rotation matrix (around Z-axis by -yaw)
   gsl_matrix_float *R_unyaw = gsl_matrix_float_alloc(3, 3);
-  float cy = cosf(-yaw), sy = sinf(-yaw);
+  float cy = cosf(yaw), sy = sinf(yaw);
   gsl_matrix_float_set(R_unyaw, 0, 0, cy);
   gsl_matrix_float_set(R_unyaw, 0, 1, -sy);
   gsl_matrix_float_set(R_unyaw, 0, 2, 0);
@@ -76,7 +89,9 @@ void qRotMatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   // Compute new yaw from corrected magnetometer values
   float mc_x = gsl_vector_float_get(mag_corrected, 0);
   float mc_y = gsl_vector_float_get(mag_corrected, 1);
-  float new_yaw = -atan2f(mc_y, mc_x) + M_PI_2;
+  float new_yaw = -atan2f(mc_y, mc_x) - M_PI_2;
+
+  //correctYawNED_2_ENU(&new_yaw); // Convert to NED convention
 
   // Create yaw correction matrix (around Z-axis by new_yaw)
   gsl_matrix_float *R_yaw = gsl_matrix_float_alloc(3, 3);
@@ -200,7 +215,7 @@ void quatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
     gsl_quat_float_rotvec(q1, mag, level_mag);
   }
 
-  float yaw = M_PI_2 - atan2f(gsl_vector_float_get(level_mag, 1),
+  float yaw = - atan2f(gsl_vector_float_get(level_mag, 1),
                               gsl_vector_float_get(level_mag, 0));
 
   gsl_quat_float_fromAxis(z_axis, yaw, q2);
@@ -226,13 +241,11 @@ void quatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
 void PCorrectMag(const gsl_vector_float *x, const gsl_vector_float *mag,
                  const gsl_vector_float *sigma_mag, gsl_matrix_float *P_current,
                  gsl_matrix_float *P) {
-  if (wk.J1 == NULL) {
-    wk.J1 = gsl_matrix_float_alloc(7, 3);
-    wk.J2 = gsl_matrix_float_alloc(7, 7);
-    wk.tmp7_3 = gsl_matrix_float_alloc(7, 3);
-    wk.tmp7_7 = gsl_matrix_float_alloc(7, 7);
-    wk.sigma = gsl_matrix_float_calloc(3, 3);
-  }
+  wk.J1 = gsl_matrix_float_alloc(7, 3);
+  wk.J2 = gsl_matrix_float_alloc(7, 7);
+  wk.tmp7_3 = gsl_matrix_float_alloc(7, 3);
+  wk.tmp7_7 = gsl_matrix_float_alloc(7, 7);
+  wk.sigma = gsl_matrix_float_calloc(3, 3);
 
   // float J1[3][7];
   // rotmatYawCorrectionJac(x->data, mag->data, J->data);
@@ -264,40 +277,34 @@ void PCorrectMag(const gsl_vector_float *x, const gsl_vector_float *mag,
   gsl_matrix_float_add(P, wk.tmp7_7);
   gsl_matrix_float_scale(P, 0.5f);
 
-  // gsl_matrix_float_free(J1);
-  // gsl_matrix_float_free(J2);
-  // gsl_matrix_float_free(tmp7_3);
-  // gsl_matrix_float_free(tmp7_7);
-  // gsl_matrix_float_free(sigma);
+  gsl_matrix_float_free(wk.J1);
+  gsl_matrix_float_free(wk.J2);
+  gsl_matrix_float_free(wk.tmp7_3);
+  gsl_matrix_float_free(wk.tmp7_7);
+  gsl_matrix_float_free(wk.sigma);
   return;
 }
 
 void correctMag(gsl_matrix_float *P1, gsl_vector_float *x1,
                 const gsl_vector_float *mag,
                 const gsl_vector_float *mag_sigma) {
-  if (wk.P2 == NULL) {
-    wk.P2 = gsl_matrix_float_alloc(P1->size1, P1->size2);
-    wk.P3 = gsl_matrix_float_alloc(P1->size1, P1->size2);
-    wk.x2 = gsl_vector_float_alloc(x1->size);
-    wk.x3 = gsl_vector_float_alloc(x1->size);
-  }
+  wk.P2 = gsl_matrix_float_alloc(P1->size1, P1->size2);
+  wk.P3 = gsl_matrix_float_alloc(P1->size1, P1->size2);
+  wk.x2 = gsl_vector_float_alloc(x1->size);
+  wk.x3 = gsl_vector_float_alloc(x1->size);
 
   gsl_vector_float_memcpy(wk.x2, x1);
   gsl_vector_float_view q2_view = gsl_vector_float_subvector(wk.x2, 0, 4);
 
   quatCorrectMag(&q2_view.vector, mag);
   for (uint8_t i = 0; i < q2_view.vector.size; i++) {
-    if (gsl_isnan(gsl_vector_float_get(&q2_view.vector, i))) {
-      return;
-    }
+    if (gsl_isnan(gsl_vector_float_get(&q2_view.vector, i))) goto free;
   }
 
   PCorrectMag(x1, mag, mag_sigma, P1, wk.P2);
   for (uint8_t i = 0; i < wk.P2->size1; i++) {
     for (uint8_t j = 0; j < wk.P2->size2; j++) {
-      if (gsl_isnan(gsl_matrix_float_get(wk.P2, i, j))) {
-        return;
-      }
+      if (gsl_isnan(gsl_matrix_float_get(wk.P2, i, j))) goto free;
     }
   }
   normal_dist_intersection(x1, wk.x2, wk.x3, P1, wk.P2, wk.P3);
@@ -311,9 +318,11 @@ void correctMag(gsl_matrix_float *P1, gsl_vector_float *x1,
   gsl_vector_float_memcpy(x1, wk.x3);
   gsl_matrix_float_memcpy(P1, wk.P3);
 
-  // gsl_matrix_float_free(P2);
-  // gsl_matrix_float_free(P3);
-  // gsl_vector_float_free(x2);
-  // gsl_vector_float_free(x3);
+free:
+
+  gsl_matrix_float_free(wk.P2);
+  gsl_matrix_float_free(wk.P3);
+  gsl_vector_float_free(wk.x2);
+  gsl_vector_float_free(wk.x3);
   return;
 }

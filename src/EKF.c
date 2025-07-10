@@ -36,12 +36,13 @@ void getQ(EKF_ctx_t* ctx);
 void getW(EKF_ctx_t* ctx);
 
 void ekfCorrect(EKF_ctx_t* ctx);
-void PCorrect(EKF_ctx_t* ctx);
 void get_h(EKF_ctx_t* ctx);
 int getH(EKF_ctx_t* ctx);
 int getR(EKF_ctx_t* ctx);
 int getS(EKF_ctx_t* ctx);
 int getK(EKF_ctx_t* ctx);
+
+int applyMagYawCorrection(const gsl_quat_float *q, const float mag[3]);
 
 void qEstPrimitive(const gsl_vector_float* velAng, float deltaT,
                    const gsl_quat_float* qPrev, gsl_quat_float* qEst,
@@ -89,7 +90,6 @@ void PInitEstimate(EKF_ctx_t* ctx);
  * Public Functions Definitions
  */
 void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
-  // Allocate workspace if not already allocated
   if (!ctx->wk) {
     ctx->wk = malloc(sizeof(EKF_work_ctx_t));
   }
@@ -108,7 +108,7 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
   ctx->mag = gsl_vector_float_calloc(3);
 
   ctx->magStdDev = gsl_vector_float_alloc(3);
-  gsl_vector_float_set_all(ctx->magStdDev, MAG_STD_DEVIATION);
+  gsl_vector_float_set_all(ctx->magStdDev, MAG_VARIANCE);
 
   ctx->horizonRefG = gsl_vector_float_calloc(3);
   gsl_vector_float_set(ctx->horizonRefG, 0, 0);
@@ -118,6 +118,7 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
 
   ctx->currentTime = 0;
   ctx->prevTime = 0;
+  ctx->lastMagCorection = 0;
 
   for (uint8_t i = 0; i < 3; i++) {
     gsl_vector_float_set(ctx->acc, i, measures->acc[i]);
@@ -125,6 +126,8 @@ void ekfInit(EKF_ctx_t* ctx, const measures_t* measures) {
   }
 
   ekfInitConditions(ctx, measures);
+  correctMag(ctx->P_current, ctx->state_current, ctx->mag,
+             ctx->magStdDev);
 }
 void ekfDeinit(EKF_ctx_t* ctx) {
   gsl_quat_float_free(ctx->state_current);
@@ -323,11 +326,17 @@ void getW(EKF_ctx_t* ctx) {
 void getQ(EKF_ctx_t* ctx) {
   getW(ctx);
 
-  gsl_blas_sgemm(CblasNoTrans, CblasTrans, GYRO_STD_DEVIATION, ctx->wk->W,
+  gsl_blas_sgemm(CblasNoTrans, CblasTrans, GYRO_VARIANCE, ctx->wk->W,
                  ctx->wk->W, 0, ctx->wk->Q);
   gsl_matrix_float_set(ctx->wk->Q, 4, 4, GYRO_BIAS_NOISE);
   gsl_matrix_float_set(ctx->wk->Q, 5, 5, GYRO_BIAS_NOISE);
   gsl_matrix_float_set(ctx->wk->Q, 6, 6, GYRO_BIAS_NOISE);
+}
+
+void PCorrect(EKF_ctx_t* ctx) {
+  EKF_work_ctx_t* wk = ctx->wk;
+  PCorrectPrimitive(ctx->P_est, wk->K, wk->H, wk->R, ctx->P_current, wk->tmp7x7,
+                    wk->tmpRTransK, wk->I7);
 }
 
 void ekfCorrect(EKF_ctx_t* ctx) {
@@ -352,11 +361,7 @@ void ekfCorrect(EKF_ctx_t* ctx) {
   }
 }
 
-void PCorrect(EKF_ctx_t* ctx) {
-  EKF_work_ctx_t* wk = ctx->wk;
-  PCorrectPrimitive(ctx->P_est, wk->K, wk->H, wk->R, ctx->P_current, wk->tmp7x7,
-                    wk->tmpRTransK, wk->I7);
-}
+
 
 void get_h(EKF_ctx_t* ctx) {
   EKF_work_ctx_t* wk = ctx->wk;
@@ -475,7 +480,9 @@ void PInitEstimate(EKF_ctx_t* ctx) {
   gsl_matrix_float_set_identity(ctx->P_current);
 }
 
-// ...existing code...
+//
+// Primitives //
+//
 
 void qEstPrimitive(const gsl_vector_float* velAng, float deltaT,
                    const gsl_quat_float* statePrev, gsl_quat_float* stateEst,
@@ -604,7 +611,7 @@ void getHPrimitive(const gsl_vector_float* state_est, const gsl_vector_float* ac
 void getRPrimitive(gsl_matrix_float* R) {
   gsl_matrix_float_set_zero(R);
   for (int i = 0; i < 3; i++) {
-    gsl_matrix_float_set(R, i, i, ACC_STD_DEVIATION);
+    gsl_matrix_float_set(R, i, i, ACC_VARIANCE);
   }
 }
 

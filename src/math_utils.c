@@ -137,6 +137,7 @@ int8_t gsl_matrix_force_symmetric(gsl_matrix *m) {
       }
     }
   }
+  return GSL_SUCCESS;
 }
 int8_t gsl_matrix_float_issymetric(const gsl_matrix *m) {
   if (m->size1 != m->size2) {
