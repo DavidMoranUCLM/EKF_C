@@ -1,4 +1,5 @@
 #include <inttypes.h>
+#include "gsl/gsl_const.h"
 
 #define ACC_VARIANCE (0.5*0.5)
 #define GYRO_VARIANCE (0.15*0.15)
@@ -15,7 +16,7 @@
 #define MAG_CORRECTION_PERIOD_S 1.f
 
 
-#define ACC_SCALE 1.F
+#define ACC_SCALE GSL_CONST_MKS_GRAV_ACCEL
 #define MAG_SCALE 1.F
 
 //0: Standard

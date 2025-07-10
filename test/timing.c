@@ -49,8 +49,8 @@ TEST_CASE("TIMING", "[EKF_C]") {
 
 void setUp(void) {
   meas.acc[0] = 0;
-  meas.acc[1] = 0;
-  meas.acc[2] = 9.81;
+  meas.acc[1] = 2;
+  meas.acc[2] = 9.5;
   meas.mag[0] = 0;
   meas.mag[1] = 1;
   meas.mag[2] = 0;

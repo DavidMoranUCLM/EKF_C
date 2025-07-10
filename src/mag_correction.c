@@ -27,6 +27,15 @@ static struct {
 
 } wk;
 
+void correctYawENU_2_NED(float *yaw) {
+  *yaw = fmodf(*yaw + M_PI, M_PI * 2) - M_PI; // -pi,pi
+
+}
+
+void correctYawNED_2_ENU(float *yaw) {
+  *yaw = fmodf(*yaw - M_PI, M_PI * 2) + M_PI; // -pi,pi
+}
+
 void qRotMatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   // Extract quaternion components
   float w = gsl_vector_float_get(state, 0);
@@ -53,9 +62,13 @@ void qRotMatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   float R21 = gsl_matrix_float_get(R, 1, 0);
   float yaw = atan2f(R21, R11);
 
+  //correctYawENU_2_NED(&yaw);
+
+
+
   // Create unyaw rotation matrix (around Z-axis by -yaw)
   gsl_matrix_float *R_unyaw = gsl_matrix_float_alloc(3, 3);
-  float cy = cosf(-yaw), sy = sinf(-yaw);
+  float cy = cosf(yaw), sy = sinf(yaw);
   gsl_matrix_float_set(R_unyaw, 0, 0, cy);
   gsl_matrix_float_set(R_unyaw, 0, 1, -sy);
   gsl_matrix_float_set(R_unyaw, 0, 2, 0);
@@ -76,7 +89,9 @@ void qRotMatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
   // Compute new yaw from corrected magnetometer values
   float mc_x = gsl_vector_float_get(mag_corrected, 0);
   float mc_y = gsl_vector_float_get(mag_corrected, 1);
-  float new_yaw = -atan2f(mc_y, mc_x) + M_PI_2;
+  float new_yaw = -atan2f(mc_y, mc_x) - M_PI_2;
+
+  //correctYawNED_2_ENU(&new_yaw); // Convert to NED convention
 
   // Create yaw correction matrix (around Z-axis by new_yaw)
   gsl_matrix_float *R_yaw = gsl_matrix_float_alloc(3, 3);
@@ -200,7 +215,7 @@ void quatCorrectMag(gsl_vector_float *state, const gsl_vector_float *mag) {
     gsl_quat_float_rotvec(q1, mag, level_mag);
   }
 
-  float yaw = M_PI_2 - atan2f(gsl_vector_float_get(level_mag, 1),
+  float yaw = - atan2f(gsl_vector_float_get(level_mag, 1),
                               gsl_vector_float_get(level_mag, 0));
 
   gsl_quat_float_fromAxis(z_axis, yaw, q2);
