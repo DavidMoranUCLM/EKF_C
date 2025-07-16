@@ -1,11 +1,5 @@
-Pasos para clonar:
+# Implementación de Filtro de Kalman Extendido (EKF) en C
 
-1. git clone https://github.com/DavidMoranUCLM/EKF_C
-2. cd EKF_C
-3. git clone https://github.com/ampl/gsl 
-4. git clone https://github.com/ThrowTheSwitch/Unity
+Esta librería proporciona una implementación de un Filtro de Kalman Extendido (EKF) en C, optimizada para la fusión de sensores en sistemas de navegación y control. El EKF es un algoritmo recursivo que estima el estado de un sistema dinámico a partir de una serie de mediciones incompletas o ruidosas. 
 
-Bibliografía
-- https://ahrs.readthedocs.io/en/latest/filters/ekf.html
-- https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
-- https://www.ashwinnarayan.com/post/how-to-integrate-quaternions/
+Esta rama, incorpora corrección independiente de heading usando medidas de magnetómetro y un vector de estados extendido inncluyendo el bias del gisoscopio.
