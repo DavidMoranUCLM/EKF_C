@@ -80,7 +80,7 @@ int main() {
   // RUN_TEST(testInvFloat);
   // RUN_TEST(testGet_h);
   // RUN_TEST(testGetH);
-  // RUN_TEST(testStep);
+  //RUN_TEST(testStep);
   RUN_TEST(testRealCase);
   return UNITY_END();
 }
@@ -92,11 +92,15 @@ int main() {
 
 void setUp(void) {
   float acc[3] = {0, 0, 9.8};
+  float mag[3] = {0, cosf(LATITUDE_RAD), -sinf(LATITUDE_RAD)};
   float velAng[3] = {0, 0, 0};
   measures_t measure;
   measure.acc[0] = acc[0];
   measure.acc[1] = acc[1];
   measure.acc[2] = acc[2];
+  measure.mag[0] = mag[0];
+  measure.mag[1] = mag[1];
+  measure.mag[2] = mag[2];
   measure.velAng[0] = velAng[0];
   measure.velAng[1] = velAng[1];
   measure.velAng[2] = velAng[2];
@@ -135,20 +139,25 @@ void testInvFloat(void) {
 void testEKFInit(void) {
   float q0[4] = {1, 0, 0, 0};
   float acc[3] = {0, 0, 9.8};
+  float mag[3] = {1, 0, 0};
   float velAng[3] = {0, 0, 0};
   measures_t measure;
   measure.acc[0] = acc[0];
   measure.acc[1] = acc[1];
   measure.acc[2] = acc[2];
+  measure.mag[0] = mag[0];
+  measure.mag[1] = mag[1];
+  measure.mag[2] = mag[2];
   measure.velAng[0] = velAng[0];
   measure.velAng[1] = velAng[1];
   measure.velAng[2] = velAng[2];
 
   ekfInit(&EKF_ctx, &measure);
   TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, acc, EKF_ctx.acc->data, 3);
+  TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, mag, EKF_ctx.mag->data, 3);
   TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, velAng, EKF_ctx.velAng->data, 3);
 
-  TEST_ASSERT_EQUAL_FLOAT_ARRAY(q0, EKF_ctx.state_current->data, 4);
+  TEST_ASSERT_EQUAL_FLOAT_ARRAY(q0, EKF_ctx.q_current->data, 4);
 
   gsl_matrix_float *P0 = gsl_matrix_float_calloc(4, 4);
   gsl_matrix_float_set_identity(P0);
@@ -163,10 +172,7 @@ void testGet_h(void) {
   gsl_vector_float_set(Axis, 0, 0);
   gsl_vector_float_set(Axis, 1, 0);
   gsl_vector_float_set(Axis, 2, 1);
-
-  gsl_vector_float_view q_est = gsl_vector_float_subvector(EKF_ctx.state_est, 0 ,4);
-
-  gsl_quat_float_fromAxis(Axis, rotAngRad, &q_est.vector);
+  gsl_quat_float_fromAxis(Axis, rotAngRad, EKF_ctx.q_est);
   get_h(&EKF_ctx);
   TEST_ASSERT_FLOAT_ARRAY_WITHIN(FLOAT_ERROR, EKF_ctx.horizonRefG->data,
                                  EKF_ctx.wk->h->data, 3);
@@ -185,10 +191,7 @@ void testGetH(void) {
   gsl_vector_float_set(Axis, 0, 0);
   gsl_vector_float_set(Axis, 1, 0);
   gsl_vector_float_set(Axis, 2, 1);
-
-  gsl_vector_float_view q_est = gsl_vector_float_subvector(EKF_ctx.state_est, 0 ,4);
-
-  gsl_quat_float_fromAxis(Axis, rotAngRad, &q_est.vector);
+  gsl_quat_float_fromAxis(Axis, rotAngRad, EKF_ctx.q_est);
   getH(&EKF_ctx);
 }
 
@@ -196,11 +199,16 @@ void testStep(void) {
   // float q0[4] = {1, 0, 0, 0};
 
   gsl_vector_float *pAcc = gsl_vector_float_calloc(3);
+  gsl_vector_float *pMag = gsl_vector_float_calloc(3);
   gsl_vector_float *pVelAng = gsl_vector_float_calloc(3);
 
   gsl_vector_float_set(pAcc, 0, 0);
   gsl_vector_float_set(pAcc, 1, 0);
   gsl_vector_float_set(pAcc, 2, 1);
+
+  gsl_vector_float_set(pMag, 0, 0);
+  gsl_vector_float_set(pMag, 1, cosf(EKF_ctx.latitude));
+  gsl_vector_float_set(pMag, 2, -sinf(EKF_ctx.latitude));
 
   gsl_vector_float_set(pVelAng, 0, 0.1);
   gsl_vector_float_set(pVelAng, 1, 0);
@@ -218,11 +226,12 @@ void testStep(void) {
   rotation_t rotation;
   createRotationFromQuat(pQw, &rotation);
 
-  csvLog_t accLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog, SLog,
-      PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog, gyrLog;
+  csvLog_t magLog, accLog, quatLog, expectedQuatLog, vLog, HLog, PLog, FLog,
+      SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog;
+  logMatrixCSV_init(&magLog, pMag, "magLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&accLog, pAcc, "accLog.txt", GSL_VECTOR);
-  logMatrixCSV_init(&quatLog, EKF_ctx.state_current, "stateLog.txt", GSL_VECTOR);
-  logMatrixCSV_init(&qEstLog, EKF_ctx.state_est, "stateEstLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&qEstLog, EKF_ctx.q_est, "qEstLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&expectedQuatLog, pQw, "quatExpectedLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&vLog, EKF_ctx.wk->z, "vLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&HLog, EKF_ctx.wk->H, "HLog.txt", GSL_MATRIX);
@@ -235,7 +244,6 @@ void testStep(void) {
   logMatrixCSV_init(&QLog, EKF_ctx.wk->Q, "QLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&RLog, EKF_ctx.wk->R, "RLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&KLog, EKF_ctx.wk->K, "KLog.txt", GSL_MATRIX);
-  logMatrixCSV_init(&gyrLog, EKF_ctx.velAng, "gyrLog.txt", GSL_VECTOR);
 
   gsl_rng *randHandle = gsl_rng_alloc(gsl_rng_default);
 
@@ -243,6 +251,9 @@ void testStep(void) {
     measure.acc[0] = gsl_vector_float_get(pAcc, 0);
     measure.acc[1] = gsl_vector_float_get(pAcc, 1);
     measure.acc[2] = gsl_vector_float_get(pAcc, 2);
+    measure.mag[0] = gsl_vector_float_get(pMag, 0);
+    measure.mag[1] = gsl_vector_float_get(pMag, 1);
+    measure.mag[2] = gsl_vector_float_get(pMag, 2);
     measure.velAng[0] = gsl_vector_float_get(pVelAng, 0);
     measure.velAng[1] = gsl_vector_float_get(pVelAng, 1);
     measure.velAng[2] = gsl_vector_float_get(pVelAng, 2);
@@ -258,6 +269,11 @@ void testStep(void) {
     gsl_vector_float_set(pAcc, 1, 0 + (float)gsl_ran_gaussian(randHandle, 0));
     gsl_vector_float_set(pAcc, 2, 1 + (float)gsl_ran_gaussian(randHandle, 0));
 
+    gsl_vector_float_set(pMag, 0, 0);
+    gsl_vector_float_set(pMag, 1, cosf(EKF_ctx.latitude));
+    gsl_vector_float_set(pMag, 2, -sinf(EKF_ctx.latitude));
+
+    rotateVector(pMag, &rotation);
     rotateVector(pAcc, &rotation);
 
     gsl_quat_float_conjugate(pQw);
@@ -266,6 +282,7 @@ void testStep(void) {
 
   gsl_rng_free(randHandle);
   gsl_vector_float_free(pAcc);
+  gsl_vector_float_free(pMag);
   gsl_vector_float_free(pVelAng);
   gsl_quat_float_free(pQw);
 
@@ -281,10 +298,10 @@ void testRealCase(void) {
 
   measures_t measure;
 
-  csvLog_t quatLog, vLog, HLog, PLog, FLog, SLog, PestLog, qEstLog, WLog, QLog,
-      RLog, invSLog, KLog, magLog, accLog, gyrLog;
-  logMatrixCSV_init(&quatLog, EKF_ctx.state_current, "stateLog.txt", GSL_VECTOR);
-  logMatrixCSV_init(&qEstLog, EKF_ctx.state_est, "stateEstLog.txt", GSL_VECTOR);
+  csvLog_t quatLog, vLog, HLog, PLog, FLog,
+      SLog, PestLog, qEstLog, WLog, QLog, RLog, invSLog, KLog;
+  logMatrixCSV_init(&quatLog, EKF_ctx.q_current, "quatLog.txt", GSL_VECTOR);
+  logMatrixCSV_init(&qEstLog, EKF_ctx.q_est, "qEstLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&vLog, EKF_ctx.wk->z, "vLog.txt", GSL_VECTOR);
   logMatrixCSV_init(&HLog, EKF_ctx.wk->H, "HLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&PLog, EKF_ctx.P_current, "PLog.txt", GSL_MATRIX);
@@ -296,20 +313,17 @@ void testRealCase(void) {
   logMatrixCSV_init(&QLog, EKF_ctx.wk->Q, "QLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&RLog, EKF_ctx.wk->R, "RLog.txt", GSL_MATRIX);
   logMatrixCSV_init(&KLog, EKF_ctx.wk->K, "KLog.txt", GSL_MATRIX);
-  logMatrixCSV_init(&accLog, EKF_ctx.acc, "accLog.txt", GSL_VECTOR);
-  logMatrixCSV_init(&magLog, EKF_ctx.mag, "magLog.txt", GSL_VECTOR);
-  logMatrixCSV_init(&gyrLog, EKF_ctx.velAng, "gyrLog.txt", GSL_VECTOR);
 
   for (int i = 0; i < size; i++) {
     measure.acc[0] = pAcc[i * 3];
     measure.acc[1] = pAcc[i * 3 + 1];
-    measure.acc[2] = -pAcc[i * 3 + 2];
-    measure.velAng[0] = pVelAng[i * 3];
-    measure.velAng[1] = pVelAng[i * 3 + 1];
-    measure.velAng[2] = pVelAng[i * 3 + 2];
+    measure.acc[2] = pAcc[i * 3 + 2];
     measure.mag[0] = pMag[i * 3];
     measure.mag[1] = pMag[i * 3 + 1];
     measure.mag[2] = pMag[i * 3 + 2];
+    measure.velAng[0] = pVelAng[i * 3];
+    measure.velAng[1] = pVelAng[i * 3 + 1];
+    measure.velAng[2] = pVelAng[i * 3 + 2];
     ekfStep(&EKF_ctx, &measure, time[i]);
     logMatrixCSV_updateAll();
   }
@@ -445,7 +459,7 @@ void logMatrixCSV_deinitAll() {
 
 void loadData(float **pAcc, float **pMag, float **pVelAng, float **time,
               uint32_t *size) {
-  FILE *file = fopen(
+   FILE *file = fopen(
       "/media/david/data/Users/deivi/Documents/Asignaturas/TFG/AHRS/partitions/storage/storage_20250506_203509.bin",
       "rb");
 

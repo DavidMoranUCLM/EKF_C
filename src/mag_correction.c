@@ -17,8 +17,8 @@
 static struct {
   gsl_matrix_float *J1;
   gsl_matrix_float *J2;
-  gsl_matrix_float *tmp7_3;
-  gsl_matrix_float *tmp7_7;
+  gsl_matrix_float *tmp4_3;
+  gsl_matrix_float *tmp4_4;
   gsl_matrix_float *sigma;
   gsl_matrix_float *P2;
   gsl_matrix_float *P3;
@@ -227,17 +227,17 @@ void PCorrectMag(const gsl_vector_float *x, const gsl_vector_float *mag,
                  const gsl_vector_float *sigma_mag, gsl_matrix_float *P_current,
                  gsl_matrix_float *P) {
   if (wk.J1 == NULL) {
-    wk.J1 = gsl_matrix_float_alloc(7, 3);
-    wk.J2 = gsl_matrix_float_alloc(7, 7);
-    wk.tmp7_3 = gsl_matrix_float_alloc(7, 3);
-    wk.tmp7_7 = gsl_matrix_float_alloc(7, 7);
+    wk.J1 = gsl_matrix_float_alloc(4, 3);
+    wk.J2 = gsl_matrix_float_alloc(4, 4);
+    wk.tmp4_3 = gsl_matrix_float_alloc(4, 3);
+    wk.tmp4_4 = gsl_matrix_float_alloc(4, 4);
     wk.sigma = gsl_matrix_float_calloc(3, 3);
   }
 
-  // float J1[3][7];
+  // float J1[3][4];
   // rotmatYawCorrectionJac(x->data, mag->data, J->data);
   quatYawCorrectionJac(x->data, mag->data, wk.J1->data);
-  // for (int i = 0; i < 7; ++i) {
+  // for (int i = 0; i < 4; ++i) {
   //   for (int j = 0; j < 3; ++j) {
   //     if (gsl_isnan(gsl_matrix_float_get(wk.J1, i, j))) {
   //       gsl_matrix_float_set(wk.J1, i, j, 10000.f);
@@ -250,24 +250,24 @@ void PCorrectMag(const gsl_vector_float *x, const gsl_vector_float *mag,
   gsl_matrix_float_set(wk.sigma, 2, 2, sigma_mag->data[2]);
 
   gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1.0, wk.J1, wk.sigma, 0.0,
-                 wk.tmp7_3);
-  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1.0, wk.tmp7_3, wk.J1, 0.0, P);
+                 wk.tmp4_3);
+  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1.0, wk.tmp4_3, wk.J1, 0.0, P);
 
-  quatYawCorrectionJacS(x->data, mag->data, wk.J2->data);
+  // quatYawCorrectionJacS(x->data, mag->data, wk.J2->data);
 
-  gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1.f, wk.J2, P_current, 0.0,
-                 wk.tmp7_7);
-  gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1.f, wk.tmp7_7, wk.J2, 1.f, P);
+  // gsl_blas_sgemm(CblasNoTrans, CblasNoTrans, 1.f, wk.J2, P_current, 0.0,
+  //                wk.tmp4_4);
+  // gsl_blas_sgemm(CblasNoTrans, CblasTrans, 1.f, wk.tmp4_4, wk.J2, 1.f, P);
 
   // Aplicar simetria 0.5*(P+P^T)
-  gsl_matrix_float_transpose_memcpy(wk.tmp7_7, P);
-  gsl_matrix_float_add(P, wk.tmp7_7);
+  gsl_matrix_float_transpose_memcpy(wk.tmp4_4, P);
+  gsl_matrix_float_add(P, wk.tmp4_4);
   gsl_matrix_float_scale(P, 0.5f);
 
   // gsl_matrix_float_free(J1);
   // gsl_matrix_float_free(J2);
-  // gsl_matrix_float_free(tmp7_3);
-  // gsl_matrix_float_free(tmp7_7);
+  // gsl_matrix_float_free(tmp4_3);
+  // gsl_matrix_float_free(tmp4_4);
   // gsl_matrix_float_free(sigma);
   return;
 }

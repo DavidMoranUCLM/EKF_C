@@ -8,8 +8,8 @@
 
 typedef struct measures_s {
   float acc[3];
-  float velAng[3];
   float mag[3];
+  float velAng[3];
 } measures_t;
 
 typedef struct EKF_work_ctx_s {
@@ -32,29 +32,24 @@ typedef struct EKF_work_ctx_s {
   // Buffers temporales (existing)
   const gsl_matrix_float *I3;
   const gsl_matrix_float *I4;
-  const gsl_matrix_float *I7;
   gsl_matrix_float *M1_4_3;
   gsl_matrix_float *M2_4_4;
-  gsl_matrix_float *M1_7_3;
-  gsl_matrix_float *M2_7_7;
   gsl_vector_float *v1;
   gsl_vector_float *v2;
 
   // NEW: Preallocated temporary buffers to avoid alloc/free on every call
   gsl_quat_float *tmpQuat;         // 4-element quaternion buffer
-  gsl_vector_float *tmpState;
   gsl_matrix_float *tmp4x4;        // 4x4 matrix buffer
-  gsl_matrix_float *tmp7x7;        // 4x4 matrix buffer
   gsl_matrix_float *tmp3x3;        // 3x3 matrix buffer
   gsl_matrix_float *tmpStdDevMat;  // 3x3 temporary for standard deviation
   gsl_matrix_float *tmpBufferMat;  // 3x4 temporary buffer
   gsl_vector_float *tmp3vec;       // 3-element vector temporary
 
   // NEW: Additional preallocated double-precision buffers for QR inversion
-  gsl_matrix *inv_tmpMatrix_d;  // double matrix of size 6x6
-  gsl_vector *inv_tmpTau_d;     // double vector of size 6
-  gsl_vector *inv_tmpB_d;       // double vector of size 6
-  gsl_vector *inv_tmpX_d;       // double vector of size 6
+  gsl_matrix *inv_tmpMatrix_d;  // double matrix of size 3x3
+  gsl_vector *inv_tmpTau_d;     // double vector of size 3
+  gsl_vector *inv_tmpB_d;       // double vector of size 3
+  gsl_vector *inv_tmpX_d;       // double vector of size 3
 
   // NEW: Temporary matrix for the product R * Trans(K)
   gsl_matrix_float *tmpRTransK;
@@ -63,24 +58,24 @@ typedef struct EKF_work_ctx_s {
 
 typedef struct EKF_ctx_s {
   EKF_work_ctx_t *wk;
-  gsl_quat_float *state_current;
-  gsl_quat_float *state_prev;
-  gsl_quat_float *state_est;
+  gsl_quat_float *q_current;
+  gsl_quat_float *q_prev;
+  gsl_quat_float *q_est;
 
   gsl_matrix_float *P_prev;
   gsl_matrix_float *P_current;
   gsl_matrix_float *P_est;
 
   gsl_vector_float *acc;
-  gsl_vector_float *velAng;
   gsl_vector_float *mag;
+  gsl_vector_float *velAng;
 
   gsl_vector_float *magStdDev;
 
   gsl_vector_float *horizonRefG;
-
   float lastMagCorrectionTime_s;
-  float magCorrectionPeriod_s;
+  float latitude;
+
   float currentTime;
   float prevTime;
 
@@ -154,8 +149,9 @@ void getKPrimitive(const gsl_matrix_float *P, const gsl_matrix_float *H,
                    const gsl_matrix_float *invS, gsl_matrix_float *K,
                    gsl_matrix_float *tmp4x3);
 void getHPrimitive(const gsl_quat_float *q, const gsl_vector_float *acc,
-                   gsl_matrix_float *H, gsl_vector_float *pQv,
-                   gsl_matrix_float *pM2, gsl_vector_float *pV1, gsl_vector_float *pV2);
+                   gsl_matrix_float *H,
+                   gsl_vector_float *pQv, gsl_matrix_float *pM2,
+                   gsl_vector_float *pV1, gsl_vector_float *pV2);
 void getRPrimitive(gsl_matrix_float *R);
 void getSPrimitive(const gsl_matrix_float *H, const gsl_matrix_float *P,
                    const gsl_matrix_float *R, gsl_matrix_float *S,
@@ -163,7 +159,8 @@ void getSPrimitive(const gsl_matrix_float *H, const gsl_matrix_float *P,
 void invertMatrixFloatPrimitive(const gsl_matrix *S, gsl_matrix *invS,
                                 gsl_vector *tau, gsl_vector *b, gsl_vector *x);
 void get_hPrimitive(const gsl_quat_float *q_est,
-                    const gsl_vector_float *horizonRefG, gsl_vector_float *h);
+                    const gsl_vector_float *horizonRefG,
+                    gsl_vector_float *h);                                
 #endif
 
 #endif
